@@ -86,7 +86,7 @@ def generate_figure_1(i_res, short_subjs):
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     for ax, fid, title in zip(axes.flat, key_fids, titles):
         M = np.load(OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy")
-        im = ax.imshow(M, cmap="magma", aspect="auto")
+        im = ax.imshow(M, cmap="hot", aspect="auto")
         ax.set_xticks(range(len(short_subjs)))
         ax.set_yticks(range(len(short_subjs)))
         ax.set_xticklabels(short_subjs, rotation=90, fontsize=8)
@@ -121,7 +121,7 @@ def generate_figure_1(i_res, short_subjs):
         if idx < len(all_fids):
             fid = all_fids[idx]
             M = np.load(OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy")
-            im = ax.imshow(M, cmap="magma", aspect="auto")
+            im = ax.imshow(M, cmap="hot", aspect="auto")
             ax.set_xticks(range(len(short_subjs)))
             ax.set_yticks(range(len(short_subjs)))
             ax.set_xticklabels(short_subjs, rotation=90, fontsize=6)
@@ -290,7 +290,7 @@ def generate_figure_4(i_res):
     draw_scalp_outline(ax_a, "A. Node Centrality Identifiability: Node Eigenvector (f06)")
     f06_idiff = np.array(i_res["f06"]["I_diff_elem"])
     norm_a = Normalize(vmin=np.min(f06_idiff), vmax=np.max(f06_idiff))
-    cmap_a = plt.cm.viridis
+    cmap_a = plt.cm.hot
     for idx, node in enumerate(NODE_LABELS):
         x, y = ELECTRODE_2D[node]
         val = f06_idiff[idx]
@@ -312,7 +312,7 @@ def generate_figure_4(i_res):
     draw_scalp_outline(ax_b, "B. Node Topology Identifiability: Alpha Binary Closeness (f24)")
     f24_idiff = np.array(i_res["f24"]["I_diff_elem"])
     norm_b = Normalize(vmin=np.min(f24_idiff), vmax=np.max(f24_idiff))
-    cmap_b = plt.cm.plasma
+    cmap_b = plt.cm.hot
     for idx, node in enumerate(NODE_LABELS):
         x, y = ELECTRODE_2D[node]
         val = f24_idiff[idx]
@@ -592,7 +592,7 @@ def generate_figure_7(twin_res):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 12))
     
     # Panel A: ses-1 Heatmap
-    im1 = ax1.imshow(j_sorted1, aspect="auto", cmap="magma", vmin=0.0, vmax=1.0, origin="upper")
+    im1 = ax1.imshow(j_sorted1, aspect="auto", cmap="hot", vmin=0.0, vmax=1.0, origin="upper")
     ax1.set_title("A. Session 1: Pairwise Jaccard (Sorted by $|\\Delta\\mathrm{age}|$)\nRows: 171 Infant Pairs | Columns: 171 Functional Edges", fontsize=11, fontweight="bold")
     ax1.set_ylabel("Subject Pairs (Sorted by Chronological Age Gap: Smallest $\\to$ Largest)", fontsize=10, fontweight="bold")
     
@@ -619,7 +619,7 @@ def generate_figure_7(twin_res):
                  arrowprops=dict(arrowstyle="->", color="lime", lw=1.5))
     
     # Panel B: ses-2 Heatmap
-    im2 = ax2.imshow(j_sorted2, aspect="auto", cmap="magma", vmin=0.0, vmax=1.0, origin="upper")
+    im2 = ax2.imshow(j_sorted2, aspect="auto", cmap="hot", vmin=0.0, vmax=1.0, origin="upper")
     ax2.set_title("B. Session 2: Pairwise Jaccard (Sorted by $|\\Delta\\mathrm{age}|$)\nRows: 171 Infant Pairs | Columns: 171 Functional Edges", fontsize=11, fontweight="bold")
     ax2.set_ylabel("Subject Pairs (Sorted by Chronological Age Gap: Smallest $\\to$ Largest)", fontsize=10, fontweight="bold")
     ax2.set_xticks(xtick_pos)
