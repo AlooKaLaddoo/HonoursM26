@@ -1,15 +1,41 @@
 analysis_suggestions.md
 
-# Virtual environments
+# Virtual environments & local runtimes
 .venv/
 env/
 venv/
+.python312/
+.env
 
 # Python cache & artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
 
-# Jupyter Notebook checkpoints
+# Jupyter Notebook checkpoints & autosaves
 .ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Scratch & temporary extraction files
+further_analysis_extracted.txt
+*.tmp
+*.log
+*.bak
+*.swp
+*~
+
+# Operating System & Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.gemini/
+.agents/

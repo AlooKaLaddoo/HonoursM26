@@ -1,0 +1,28 @@
+| Feature ID | Feature Name | Twin Similarity ses-1 | Twin Similarity ses-2 | Percentile Rank ses-1 (/171) | Percentile Rank ses-2 (/171) | Matched Infant Rank ses-1 | Matched Infant Rank ses-2 | Matched Age Rank ses-1 | Matched Age Rank ses-2 | M[86, 86] Self | M[87, 87] Self | M[86, 87] Cross | M[87, 86] Cross | 86 Cross-Rank in Row | 87 Cross-Rank in Row | Misidentified? | Shared P95 Elements Count | Shared P95 Elements |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| f01 | broadband_weighted_correlation | 0.5754 | 0.6402 | 12.9 | 26.3 | 11.8 | 20.6 | 12.8 | 24.3 | 0.603 | 0.6616 | 0.581 | 0.606 | 14 | 16 | None | 2 | F4-T5, Fp2-P3 |
+| f02 | broadband_weighted_node_betweenness | 0.2509 | 0.2181 | 91.8 | 66.1 | 91.2 | 47.1 | 92.3 | 67.6 | 0.1779 | 0.2402 | 0.2024 | 0.2154 | 7 | 9 | None | 0 | None |
+| f03 | broadband_weighted_edge_betweenness | 0.2836 | 0.3376 | 22.8 | 24.0 | 32.4 | 14.7 | 25.6 | 24.3 | 0.2899 | 0.317 | 0.2899 | 0.3105 | 9 | 9 | None | 0 | None |
+| f04 | broadband_weighted_node_strength | 0.8213 | 0.8148 | 65.5 | 44.4 | 52.9 | 35.3 | 62.8 | 43.2 | 0.8029 | 0.8436 | 0.7844 | 0.8122 | 16 | 12 | None | 0 | None |
+| f05 | broadband_weighted_edge_strength | 0.4289 | 0.4363 | 39.8 | 21.1 | 44.1 | 20.6 | 41.0 | 16.2 | 0.4224 | 0.5011 | 0.3919 | 0.4104 | 15 | 17 | None | 2 | F7-C3, T6-O1 |
+| f06 | broadband_weighted_node_eigenvector | 0.6977 | 0.7814 | 2.9 | 3.5 | 8.8 | 5.9 | 5.1 | 2.7 | 0.7857 | 0.8279 | 0.7022 | 0.7617 | 18 | 17 | None | 0 | None |
+| f07 | broadband_weighted_edge_eigenvector | 0.6206 | 0.7001 | 2.9 | 4.7 | 8.8 | 5.9 | 5.1 | 8.1 | 0.6926 | 0.7526 | 0.6275 | 0.6639 | 18 | 18 | None | 0 | None |
+| f08 | broadband_weighted_node_closeness | 0.8365 | 0.8214 | 91.2 | 69.6 | 85.3 | 67.6 | 89.7 | 59.5 | 0.7933 | 0.8334 | 0.7973 | 0.8063 | 9 | 10 | None | 0 | None |
+| f09 | broadband_weighted_edge_closeness | 0.861 | 0.8346 | 94.2 | 67.3 | 85.3 | 64.7 | 92.3 | 56.8 | 0.8104 | 0.8468 | 0.8209 | 0.8275 | 10 | 10 | None | 0 | None |
+| f10 | broadband_binary_adjacency | 0.4159 | 0.466 | 8.2 | 25.7 | 20.6 | 29.4 | 14.1 | 24.3 | 0.4327 | 0.5563 | 0.4282 | 0.4704 | 10 | 14 | None | 1 | T6-O1 |
+| f11 | broadband_binary_node_betweenness | 0.1823 | 0.2569 | 18.1 | 43.3 | 5.9 | 38.2 | 17.9 | 40.5 | 0.2258 | 0.2034 | 0.1802 | 0.2227 | 17 | 6 | None | 0 | None |
+| f12 | broadband_binary_edge_betweenness | 0.1438 | 0.188 | 9.4 | 39.2 | 8.8 | 29.4 | 10.3 | 29.7 | 0.1671 | 0.183 | 0.1316 | 0.1895 | 17 | 7 | None | 0 | None |
+| f13 | broadband_binary_node_degree | 0.6059 | 0.5963 | 38.0 | 28.1 | 41.2 | 29.4 | 42.3 | 21.6 | 0.6102 | 0.6625 | 0.5673 | 0.6317 | 12 | 9 | None | 0 | None |
+| f14 | broadband_binary_edge_strength | 0.2378 | 0.2227 | 18.1 | 4.7 | 29.4 | 11.8 | 23.1 | 2.7 | 0.2443 | 0.3543 | 0.2232 | 0.2528 | 9 | 18 | None | 0 | None |
+| f15 | broadband_binary_node_eigenvector | 0.3251 | 0.5186 | 3.5 | 25.7 | 14.7 | 23.5 | 5.1 | 35.1 | 0.459 | 0.6568 | 0.2643 | 0.5136 | 18 | 17 | None | 0 | None |
+| f16 | broadband_binary_edge_eigenvector | 0.1308 | 0.2962 | 1.8 | 32.7 | 5.9 | 41.2 | 1.3 | 45.9 | 0.2246 | 0.4405 | 0.1206 | 0.2797 | 15 | 17 | None | 0 | None |
+| f17 | broadband_binary_node_closeness | 0.7454 | 0.7296 | 49.7 | 25.7 | 55.9 | 20.6 | 47.4 | 8.1 | 0.7586 | 0.7493 | 0.748 | 0.754 | 13 | 9 | None | 0 | None |
+| f18 | broadband_binary_edge_closeness | 0.2819 | 0.3131 | 33.9 | 43.9 | 41.2 | 41.2 | 37.2 | 32.4 | 0.29 | 0.39 | 0.2913 | 0.3368 | 8 | 7 | None | 1 | T6-O1 |
+| f19 | delta_weighted_correlation | 0.5627 | 0.6466 | 7.6 | 43.3 | 8.8 | 35.3 | 7.7 | 43.2 | 0.5938 | 0.6577 | 0.5733 | 0.6105 | 14 | 15 | None | 0 | None |
+| f20 | delta_binary_adjacency | 0.404 | 0.4999 | 6.4 | 78.9 | 14.7 | 73.5 | 10.3 | 81.1 | 0.4188 | 0.5366 | 0.4349 | 0.4641 | 5 | 9 | None | 0 | None |
+| f21 | theta_weighted_correlation | 0.5882 | 0.6261 | 46.8 | 39.8 | 50.0 | 35.3 | 51.3 | 35.1 | 0.6083 | 0.6179 | 0.5806 | 0.5938 | 15 | 12 | None | 1 | Fp2-T6 |
+| f22 | theta_binary_adjacency | 0.4381 | 0.4884 | 54.4 | 80.1 | 64.7 | 52.9 | 61.5 | 81.1 | 0.4283 | 0.4907 | 0.4377 | 0.4223 | 6 | 12 | None | 0 | None |
+| f23 | alpha_weighted_correlation | 0.6227 | 0.6222 | 69.6 | 81.9 | 76.5 | 70.6 | 74.4 | 83.8 | 0.6425 | 0.6234 | 0.6433 | 0.5989 | 2 | 9 | None | 3 | Fp1-FZ, Fp1-C4, T6-O2 |
+| f24 | alpha_binary_adjacency | 0.5077 | 0.5352 | 66.7 | 97.7 | 73.5 | 97.1 | 75.6 | 97.3 | 0.5078 | 0.5005 | 0.5351 | 0.519 | 1 | 2 | 86 -> 87 | 0 | None |
+| f25 | beta_weighted_correlation | 0.5245 | 0.7445 | 18.1 | 97.1 | 23.5 | 91.2 | 23.1 | 97.3 | 0.7324 | 0.6476 | 0.7563 | 0.6294 | 3 | 11 | None | 1 | C4-CZ |
+| f26 | beta_binary_adjacency | 0.4216 | 0.4577 | 22.8 | 17.5 | 32.4 | 20.6 | 21.8 | 13.5 | 0.4364 | 0.5244 | 0.4262 | 0.4857 | 6 | 17 | None | 0 | None |
