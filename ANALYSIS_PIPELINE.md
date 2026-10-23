@@ -1,6 +1,6 @@
 # Longitudinal Analysis Pipeline: Universality and Individuality of Infant EEG Network Constituents
 
-**Author:** Based on the specification by @Adi B (*Oct 20, 2026*)  
+**Author:** Based on the specification by @Aditi Bose (*Oct 20, 2026*)  
 **Workspace:** `/home/aloo/HonoursM26`  
 **Target Cohort:** $N = 19$ longitudinal infants across 2 sessions (`ses-1` and `ses-2`) with $K = 12$ artifact-free epochs each.
 
