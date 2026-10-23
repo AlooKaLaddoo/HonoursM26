@@ -327,6 +327,8 @@ Statistical Inference Rules:
    * Identifiability null: Randomly permute the columns of $M$ (`ses-2` labels) to obtain the null distribution for $I_{\text{diff}}$ and identification accuracy.
    * Element-wise identifiability: Apply the identical column permutation across all element matrices $M_e$ simultaneously, preserving spatial covariance.
 
+$\color{red}\textsf{please elaborate the two algorithms in detail without missing out on any technicalities in our context.}}$
+
 ---
 
 ### Phase 8: Robustness & Sensitivity Checks (Step 8 — Table T4)
