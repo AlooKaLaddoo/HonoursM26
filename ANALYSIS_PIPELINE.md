@@ -305,6 +305,7 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
    * Shared elements: Elements where sibling similarity exceeds the 95th percentile of non-sibling pairs.
 
 $\color{red}{\textsf{it's to be looked upon as a special case study.}}$ $\color{red}{\textsf{if results come out nice (presentable), we can make a separate section/subsection just focusing on this.}}$ 
+
 ---
 
 ### Phase 7: Statistical Inference Architecture (Step 7)
