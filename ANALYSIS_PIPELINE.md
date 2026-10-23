@@ -109,7 +109,7 @@ To ensure strict reproducibility:
 | **f11** | Broadband | Binary | Node Betweenness | 19 | Unweighted shortest paths |
 | **f12** | Broadband | Binary | Edge Betweenness | 171 | Unweighted shortest paths |
 | **f13** | Broadband | Binary | Node Degree | 19 | Unweighted degree |
-| **f14** | Broadband | Binary | Edge Strength | 171 | Average degree of incident endpoints |
+| **f14** | Broadband | Binary | Edge Strength | 171 | $\color{blue}{\textsf{Corrected}}$ average degree of incident endpoints |
 | **f15** | Broadband | Binary | Node Eigenvector | 19 | Principal eigenvector of $A$ |
 | **f16** | Broadband | Binary | Edge Eigenvector | 171 | Line graph unweighted eigenvector |
 | **f17** | Broadband | Binary | Node Closeness | 19 | Unweighted shortest path |
