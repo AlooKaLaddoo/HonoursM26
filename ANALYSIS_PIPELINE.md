@@ -146,7 +146,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
    * Overall recording similarity is the mean across the epoch pairing set $P$:
      $$S_{R_1 R_2} = \frac{1}{|P|} \sum_{(k_1, k_2) \in P} S^{(k_1, k_2)}$$
 
-### 4.2 Epoch Pairing Schemes ($P$) $\color{red}{\textsf{SOME FORMATTIG ISSUE HERE}}$
+### 4.2 Epoch Pairing Schemes ($P$) $\color{red}{\textsf{SOME FORMATTING ISSUE HERE}}$
 
 | Comparison | Description | Pairing Set $P$ | Count $|P|$ |
 | :--- | :--- | :--- | :---: |
