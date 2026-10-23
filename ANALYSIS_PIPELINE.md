@@ -304,6 +304,7 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
    * Cross-session cross-identification: Evaluate $M[86, 87]$ and $M[87, 86]$ to determine if twin A is misidentified as twin B.
    * Shared elements: Elements where sibling similarity exceeds the 95th percentile of non-sibling pairs.
 
+$\color{red}{\textsf{it's to be looked upon as a special case study.}}$ $\color{red}{\textsf{if results come out nice (presentable),}}$ $\color{red}{\textsf{we can make a separate section/subsection}}$ $\color{red}{\textsf{just focusing on this.}}$
 ---
 
 ### Phase 7: Statistical Inference Architecture (Step 7)
