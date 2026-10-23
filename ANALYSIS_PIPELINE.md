@@ -100,7 +100,7 @@ To ensure strict reproducibility:
 | **f02** | Broadband | Weighted | Node Betweenness | 19 | Brandes algorithm, $d_{ij} = 1/w_{ij}$ |
 | **f03** | Broadband | Weighted | Edge Betweenness | 171 | Girvan-Newman, $d_{ij} = 1/w_{ij}$ |
 | **f04** | Broadband | Weighted | Node Strength | 19 | Sum of incident edge weights |
-| **f05** | Broadband | Weighted | Edge Strength | 171 | Average strength of incident endpoints |
+| **f05** | Broadband | Weighted | Edge Strength | 171 | $\color{blue}{\textsf{Corrected}}$ average strength of incident endpoints |
 | **f06** | Broadband | Weighted | Node Eigenvector | 19 | Principal eigenvector of $W$ |
 | **f07** | Broadband | Weighted | Edge Eigenvector | 171 | Line graph eigenvector centrality |
 | **f08** | Broadband | Weighted | Node Closeness | 19 | Harmonic/Shortest path, $d_{ij} = 1/w_{ij}$ |
