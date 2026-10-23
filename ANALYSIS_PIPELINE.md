@@ -266,7 +266,7 @@ Classify each element into four functional quadrants using FDR-corrected signifi
 | **Variable / Redundant** | Not significant | Not significant | Fluctuating or uninformative constituents |
 
 #### 5.2 State vs. Trait Variance Decomposition (Step 5b)
-On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ sessions} \times 12 \text{ epochs} = 456 \text{ observations/$\color{blue}{\textsf{TEFBNs}}$}$):
+On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ sessions} \times 12 \text{ epochs} = 456 \text{ observations}{\color{blue}\textsf{/TEFBNs}}$):
 1. **Rank-based Inverse Normal Transformation:**
    Transform $x(e)$ across all 456 observations to resolve skewness and zero inflation.
 2. **Linear Mixed-Effects Model:**
