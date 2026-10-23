@@ -294,10 +294,10 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
    * Null model: 10,000 permutations of the interval vector.   $\color{red}{\textsf{do it for 50000, 100000, 2000000 and do check for intermediate permutaion value as well based on your observation from results produced}}$
    * Specific reporting: Highlight short-gap test-retest infant `sub-NORB00064` (4 days) and intermediate infant `sub-NORB00069` (42 days).
 3. **Age Discrepancy vs. Network Similarity (Mantel Test):**
-   * Matrix 1: $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$.
-   * Matrix 2: $19 \times 19$ absolute age difference matrix $D[a, b] = |\text{age}_a - \text{age}_b|$ (days).
+   * Matrix 1: $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$.  $\color{red}{\textsf{so is it subject }\times\textsf{ subject for one particular session?}}$ $\color{red}{\textsf{is it a symmetric matrix?}}$
+   * Matrix 2: $19 \times 19$ absolute age difference matrix $D[a, b] = |\text{age}_a - \text{age}_b|$ (days).   $\color{red}{\textsf{same question as above}}$
    * Statistic: Spearman rank correlation $\rho$ across the 171 upper-triangle elements.
-   * Null model: 10,000 simultaneous row/column infant permutations of matrix $D$.
+   * Null model: 10,000 simultaneous row/column infant permutations of matrix $D$.   $\color{red}{\textsf{do it for 50000, 100000, 2000000 and do check for intermediate permutaion value as well based on your observation from results produced}}$
 4. **Twin / Sibling Pair Analysis (`sub-NORB00086` & `sub-NORB00087` — Table T6):**
    * Percentile rank of sibling pair similarity $S_{(86, s), (87, s)}$ among all 171 pairs.
    * Rank against matched control pairs (pairs involving either sibling, and non-sibling pairs with $|\Delta\text{age}| \le 7$ days).
