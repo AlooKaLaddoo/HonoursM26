@@ -51,7 +51,7 @@ Step 0 requires all subjects to possess at least $K = 12$ expert-annotated, arti
 * Number of unique pairs within each session: $\binom{19}{2} = 171$ pairs.
 * Identifiability cross-session matrix $M$: $19 \times 19$ matrix ($19$ self pairs, $342$ cross-subject pairs).
 
-| Participant ID | Sex | Age `ses-1` $\color{red}{\textsf{(yr)}}$ | Age `ses-2` $\color{red}{\textsf{(yr)}}$ | Inter-session Gap $\color{red}{\textsf{(mo)}}$ | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
+| Participant ID | Sex | Age `ses-1` (yr)$\color{red}{\textsf{-->(mo)}}$ | Age `ses-2` (yr)$\color{red}{\textsf{-->(mo)}}$ | Inter-session Gap (mo) | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `sub-NORB00064` | M | 0.4262 | 0.4372 | 0.13 | 13 | 20 | Singleton (Short test-retest gap: ~4 days) |
 | `sub-NORB00065` | M | 0.4344 | 0.7978 | 4.36 | 20 | 20 | Singleton |
