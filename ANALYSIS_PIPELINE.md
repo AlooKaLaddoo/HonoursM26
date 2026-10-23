@@ -221,7 +221,7 @@ flowchart TD
      Compare infant $a$'s first half with infant $b$'s second half ($b \ne a$) using identical pairing $(k, k+6)$:
      $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$ $\color{red}{\textsf{this normalization corresponds to global average.}}$ $\color{red}{\textsf{what about the within subject network-level normalization?}}$
   4. **Within-Session Identifiability:** $W_s(a) - O_s(a)$ tested against 0 via infant-level bootstrap.
-  5. **Odd/Even Sensitivity:** Repeat split pairing odd epochs with subsequent even epochs $(k, k+1)$. $\color{red}{\textcf{please elaborate this.}}$
+  5. **Odd/Even Sensitivity:** Repeat split pairing odd epochs with subsequent even epochs $(k, k+1)$. $\color{red}{\textsf{please elaborate this.}}$
 
 ---
 
@@ -231,7 +231,7 @@ flowchart TD
   1. **Identifiability Matrix $M \in \mathbb{R}^{19 \times 19}$:**
      $$M[a, b] = S_{(a, 1), (b, 2)}$$
      Rows = `ses-1`, Columns = `ses-2`. 
-     $\color{red}{\textfs{here 19 is the subject sample size, right?}}$
+     $\color{red}{\textsf{here 19 is the subject sample size, right?}}$
   2. **Global Identifiability Parameters:**
      * Self-similarity (Comparison C):
        $$I_{\text{self}} = \frac{1}{19} \sum_{a=1}^{19} M[a, a]$$
