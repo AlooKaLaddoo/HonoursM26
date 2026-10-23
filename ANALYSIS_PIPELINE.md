@@ -73,7 +73,7 @@ Step 0 requires all subjects to possess at least $K = 12$ expert-annotated, arti
 | `sub-NORB00096` | M | 0.2274 | 0.5000 | 3.27 | 20 | 20 | Singleton |
 | `sub-NORB00103` | F | 0.2410 | 0.5233 | 3.39 | 35 | 20 | Singleton |
 
-* $\color{red}{\textsf{NOTE: there are sub-bands like $\alpha_1$, $\alpha_2$, and so on. in literature people have shown improved/emerging results within these sub-ranges. e need to look at these later.}}$
+* $\color{red}{\textsf{NOTE: there are sub-bands like }\alpha_1\textsf{, }\alpha_2\textsf{, and so on. In literature people have shown improved/emerging results within these sub-ranges. We need to look at these later.}}$
 ---
 
 ## 3. The 26 Feature Sets & Input Tensors (Step 1)
