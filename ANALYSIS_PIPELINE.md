@@ -19,7 +19,7 @@ This is achieved using a unified similarity metric—the **weighted Jaccard simi
 │               → Quantifies UNIVERSALITY (U_1, U_2) across the population               │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ Comparison B: Within-subject, within-session (first K/2 vs second K/2 epochs)          │
-│               → Quantifies WITHIN-SESSION STABILITY (W_1, W_2) & short-term ceiling   │
+│               → Quantifies WITHIN-SESSION STABILITY (W_1, W_2) & short-term ceiling    │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ Comparison C: Within-subject, between-session (same infant across ~3-4 months)         │
 │               → Quantifies LONGITUDINAL SELF-SIMILARITY (I_self)                       │
@@ -30,7 +30,7 @@ This is achieved using a unified similarity metric—the **weighted Jaccard simi
 ```
 
 > **Key Theoretical Axiom:** Individuality is **not** Comparison C alone. It is defined as **Differential Identifiability**:
-> $$I_{\text{diff}} = I_{\text{self}} - I_{\text{others}}$$
+> $$I_{\text{diff}} = I_{\text{self}} - I_{\text{others}}$$ (Amico2018quest; http://dx.doi.org/10.1038/s41598-018-25089-1)
 > Because shared developmental maturation affects both $I_{\text{self}}$ and $I_{\text{others}}$ across the 3-month gap, subtracting $I_{\text{others}}$ isolates true individual specificity from normative maturation.
 
 ---
