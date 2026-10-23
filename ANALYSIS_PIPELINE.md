@@ -136,9 +136,9 @@ For two feature vectors $x_1, x_2 \ge 0$:
    * **The $0/0$ Rule:** When both $x_1(e) = 0$ and $x_2(e) = 0$, the ratio is undefined ($0/0$). It is set to `NaN` and excluded from the average using `np.nanmean`. This strictly adheres to the classical Jaccard formulation, which ignores joint absences.
    * If all pairs for an element are `NaN`, $J(e) = \text{NaN}$. The undefined fraction is tracked and reported per element in Table T2.
    * The legacy rule ($0/0 \to 0$) is evaluated separately as a Step 8 sensitivity check.
-  
-   * $\color{red}{\textsf{please confirm me once how these results coming from this edge case is being included in results. NaNs are good to flag out, but i recall we decided to make 0/0=0 from physiological standpoint.}}$
 
+     $\color{red}{\textsf{please confirm once how results from this edge case}}$ $\color{red}{\textsf{are being included in the results.}}$ $\color{red}{\textsf{NaNs are good to flag out, but I recall we decided}}$ $\color{red}{\textsf{to make 0/0 = 0 from a physiological standpoint.}}$
+     
 2. **Recording-level Weighted Jaccard $S$:**
    Evaluated across all elements simultaneously for an epoch pair $(k_1, k_2)$:
    $$S^{(k_1, k_2)} = \frac{\sum_{e=1}^n \min\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}{\sum_{e=1}^n \max\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}$$
