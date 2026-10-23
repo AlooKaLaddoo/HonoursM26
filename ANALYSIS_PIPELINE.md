@@ -162,7 +162,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
 flowchart TD
     Step0["Step 0: Verification & Bookkeeping (N=19, Table T5)"] --> Step1["Step 1: Tensor Construction (X_f for 26 Features)"]
     Step1 --> Step2["Step 2: Comparison A - Universality (U_1, U_2, Delta U)"]
-    Step1 --> Step3["Step 3: Comparison B - Within-Session, within subject Stability (W_1, W_2)"]
+    Step1 --> Step3["Step 3: Comparison B - Within-Session, <b>within subject</b> Stability (W_1, W_2)"]
     Step1 --> Step4["Step 4: Comparisons C & D - Identifiability Matrix M (I_self, I_others, I_diff)"]
     Step2 --> Step5["Step 5: Axis Combination - Taxonomy (5a) & ANOVA (5b)"]
     Step4 --> Step5
