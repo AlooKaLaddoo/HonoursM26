@@ -245,6 +245,7 @@ flowchart TD
      * Ties count as incorrect. Chance baseline is $1/19 = 5.26\%$.
   4. **Element-level Identifiability:**
      Compute $M_e[a, b] = J_{(a, 1), (b, 2)}(e)$ to yield $I_{\text{self}}(e), I_{\text{others}}(e)$, and $I_{\text{diff}}(e)$.
+     $\color{red}{\textsf{are these somewhere getting used at downstream pipeline?}}$.
 
 ---
 
