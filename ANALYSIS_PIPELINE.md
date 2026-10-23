@@ -182,8 +182,8 @@ flowchart TD
 * **Execution:**
   1. Load precomputed absolute correlation matrices for `ses-1` and `ses-2` from `correlation_matrices_segment_wise_absolute/`.
   2. Apply GCC thresholding on each window to obtain binary adjacency $A_{ij}$ (saving the critical threshold $\tau_c$ and edge density).
-  3. Compute graph centrality measures (node/edge betweenness, strength, eigenvector, closeness) via `networkx`.
-  4. For the 8 frequency band features, load filtered segments from EDFs for Delta, Theta, Alpha, Beta, compute Pearson $|r|$ and GCC binarization for both sessions.
+  3. Compute graph centrality measures (node/edge: betweenness, strength, eigenvector, closeness) via `networkx`.
+  4. For the 8 frequency band features, load filtered segments from EDFs for Delta, Theta, Alpha, Beta, compute Pearson $|r|$ and GCC binarization for both sessions. $\color{red}{\textsf{did you do segment-wise filtering; or filtering on the entire raw time signals and then extracting the first 12 consecutive segments? we need to do the later one to avoid the edge effects for short length signal segment.}}$
 
 ---
 
