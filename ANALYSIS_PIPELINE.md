@@ -215,7 +215,7 @@ flowchart TD
   1. **Epoch Split:** For each infant and session, split 12 epochs into First Half ($k \in \{1, \dots, 6\}$) and Second Half ($k \in \{7, \dots, 12\}$), pairing $(k, k+6)$.
   2. **Self-Similarity:**
      * Element-level: $W_s(a, e) = J_{(a,s,\text{first}), (a,s,\text{second})}(e)$
-     * Recording-level: $W_s(a) = S_{(a,s,\text{first}), (a,s,\text{second})}$ $\color{red}{\textsf{please elaborate this i.e. at which level the network reduction is happening. do the same above.}}$
+     * Recording-level: $W_s(a) = S_{(a,s,\text{first}), (a,s,\text{second})}$ $\color{red}{\textsf{please elaborate this i.}}$ $\color{red}{\textsf{e.}}$ $\color{red}{\textsf{at which level the network reduction is happening.}}$ $\color{red}{\textsf{do the same above.}}$
      * Cohort mean: $W_s(e)$ and $W_s$.
   3. **Matched Others Baseline:**
      Compare infant $a$'s first half with infant $b$'s second half ($b \ne a$) using identical pairing $(k, k+6)$:
