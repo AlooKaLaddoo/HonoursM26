@@ -240,7 +240,7 @@ flowchart TD
      * **Differential Identifiability:**
        $$I_{\text{diff}} = (I_{\text{self}} - I_{\text{others}}) \times 100$$
   3. **Identification Accuracy (1-Nearest Neighbor):**
-     * **Forward (`ses-1` $\to$ `ses-2`):** For row $a$, predicted identity is $\arg\max_b M[a, b]$. Correct if $b = a$.
+     * **Forward (`ses-1` $\to$ `ses-2`):** For row $a$, predicted identity is $\arg\max_b M[a, b]$. Correct if $b = a$ $\color{red}{\textsf{specify a,b here at this final condition}}$.
      * **Backward (`ses-2` $\to$ `ses-1`):** For column $b$, predicted identity is $\arg\max_a M[a, b]$. Correct if $a = b$.
      * Ties count as incorrect. Chance baseline is $1/19 = 5.26\%$.
   4. **Element-level Identifiability:**
