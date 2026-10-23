@@ -142,7 +142,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
 2. **Recording-level Weighted Jaccard $S$:**
    Evaluated across all elements simultaneously for an epoch pair $(k_1, k_2)$:
    $$S^{(k_1, k_2)} = \frac{\sum_{e=1}^n \min\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}{\sum_{e=1}^n \max\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}$$
-   * Joint absences ($0+0$) naturally contribute $0$ to both numerator and denominator sums without requiring a special exception.
+   * Joint absences ($0+0$) naturally contribute $0$ to both numerator and denominator sums without requiring a special exception. $\color{red}{\textsf{same edge case here}}$
    * Overall recording similarity is the mean across the epoch pairing set $P$:
      $$S_{R_1 R_2} = \frac{1}{|P|} \sum_{(k_1, k_2) \in P} S^{(k_1, k_2)}$$
 
