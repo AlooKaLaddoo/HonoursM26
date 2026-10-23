@@ -290,8 +290,8 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
     $\color{red}{\textsf{elaborate the entire algorithm here.}}$
 2. **Decay with Inter-Session Gap:**
    * Compute Spearman correlation $\rho$ between self-similarity $M[a, a]$ and inter-session time gap (in days).
-   * Compute Spearman correlation between $i_{\text{diff}}(a)$ and time gap.
-   * Null model: 10,000 permutations of the interval vector.
+   * Compute Spearman correlation between $i_{\text{diff}}(a)$ and time gap.  $\color{red}{\textsf{what is}i_{diff}(a)?}$
+   * Null model: 10,000 permutations of the interval vector.   $\color{red}{\textsf{do it for 50000, 100000, 2000000 and do check for intermediate permuttaion value as well based on your observation from results produced}}$
    * Specific reporting: Highlight short-gap test-retest infant `sub-NORB00064` (4 days) and intermediate infant `sub-NORB00069` (42 days).
 3. **Age Discrepancy vs. Network Similarity (Mantel Test):**
    * Matrix 1: $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$.
