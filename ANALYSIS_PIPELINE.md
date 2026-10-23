@@ -265,7 +265,7 @@ Classify each element into four functional quadrants using FDR-corrected signifi
 | **Universal & Individual**| **Significant** (both sessions) | **Significant** | High shared baseline with stable infant-specific modulation |
 | **Variable / Redundant** | Not significant | Not significant | Fluctuating or uninformative constituents |
 
-#### 5.2 State vs. Trait Variance Decomposition (Step 5b)  $\color{red}{\textsf{FIX THE FORMATTING & explain me the results first along with implementation from code}}$
+#### 5.2 State vs. Trait Variance Decomposition (Step 5b)  $\color{red}{\textsf{FIX THE FORMATTING and explain me the results first along with implementation from code}}$
 On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ sessions} \times 12 \text{ epochs} = 456 \text{ observations}{\color{blue}\textsf{/TEFBNs}}$):  ${\color{blue}\textsf{TEFBNs:Time Evolving Functional Brain Networks}}$
 1. **Rank-based Inverse Normal Transformation:**
    Transform $x(e)$ across all 456 observations to resolve skewness and zero inflation.
