@@ -84,7 +84,7 @@ where:
 * **Sessions ($S=2$):** $s \in \{1, 2\}$ (`ses-1`, `ses-2`).
 * **Epochs ($K=12$):** $k \in \{1, \dots, 12\}$ chronological artifact-free segments.
 * **Elements ($n$):** $n = 19$ for node features; $n = 171$ for edge features.
-  $\color{blue}{\textsf{total no of features=8664(vertices),77976(edges); one one type of centrality}}$
+  $\color{blue}{\textsf{total no of features=8664(vertices),77976(edges); for one type of centrality}}$
 
 ### 3.1 Fixed Element Ordering
 To ensure strict reproducibility:
