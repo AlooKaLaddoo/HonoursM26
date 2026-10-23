@@ -336,14 +336,14 @@ $\color{red}{\textsf{please elaborate the two algorithms in detail without missi
 To ensure conclusions are not artifacts of hyperparameter choices, rerun the primary metrics ($U_1, U_2, I_{\text{diff}}$, accuracy, taxonomy counts) across 9 specific sensitivity variations:
 
 1. **$0/0$ Replacement:** Set $0/0 \to 0$ instead of excluding `NaN`.  $\color{red}{\textsf{okay so i mentioned this above.}}$ $\color{red}{\textsf{now the point is we are doing the both eventually which is good since we observed something something from the histograms as well!}}$
-2. **Combinatorial Epoch Pairing:** Average over all $12 \times 12 = 144$ epoch combinations instead of diagonal $(k, k)$.
+2. **Combinatorial Epoch Pairing:** Average over all $12 \times 12 = 144$ epoch combinations instead of diagonal $(k, k)$.  $\color{red}{\textsf{elaborate this in detail.}}$
 3. **Epoch Window Length:** Truncate to $K = 6$ epochs instead of $K = 12$.
 4. **Twin Exclusion:** Recompute with $N = 17$ infants, excluding twin pair `sub-NORB00086` and `sub-NORB00087`.
 5. **Pattern-Only Normalization:** Divide each epoch vector by its $L_1$ sum ($\sum_e x(e) = 1$) to remove global amplitude shifts before computing Jaccard.
-6. **Reference Montage:** Re-reference continuous EEG to average reference before computing correlation matrices.
-7. **Volume Conduction Control:** Compute debiased weighted phase lag index (dwPLI) via MNE Connectivity instead of Pearson $|r|$.
-8. **Fixed-Density Binarization:** Replace GCC thresholding with fixed top-$m$ edge thresholding (where $m = \text{median GCC edge count}$).
-9. **Physical Distance Regression:** Regress Euclidean 3D inter-electrode distance out of edge centralities, re-evaluating universality on distance-adjusted residuals.
+6. **Reference Montage:** Re-reference continuous EEG to average reference before computing correlation matrices.    $\color{red}{\textsf{explain how did you do it by citing reference article.}}$ $\color{red}{\textsf{this is a sensitive thing that needs literature back-up.}}$ $\color{red}{\textsf{if we do this, need to do it carefully.}}$
+7. **Volume Conduction Control:** Compute debiased weighted phase lag index (dwPLI) via MNE Connectivity instead of Pearson $|r|$.  $\color{red}{\textsf{need to follow the MNE documentation without making any error; so utilize and cite that.}}$  $\color{red}{\textsf{it's way too crucial.}}$
+8. **Fixed-Density Binarization:** Replace GCC thresholding with fixed top-$m$ edge thresholding (where $m = \text{median GCC edge count}$).   $\color{red}{\textsf{elaborate the entire method without missing out on anything tiny technicality.}}$
+9. **Physical Distance Regression:** Regress Euclidean 3D inter-electrode distance out of edge centralities, re-evaluating universality on distance-adjusted residuals.   $\color{red}{\textsf{elaborate this in detail that how you did it.}}$
 
 ---
 
