@@ -216,7 +216,7 @@ flowchart TD
   2. **Self-Similarity:**
      * Element-level: $W_s(a, e) = J_{(a,s,\text{first}), (a,s,\text{second})}(e)$
      * Recording-level: $W_s(a) = S_{(a,s,\text{first}), (a,s,\text{second})}$ $\color{red}{\textsf{please elaborate this i.}}$ $\color{red}{\textsf{e.}}$ $\color{red}{\textsf{at which level the network reduction is happening.}}$ $\color{red}{\textsf{do the same above.}}$
-     * Cohort mean: $W_s(e)$ and $W_s$.  $\color{red}{\textsf{please elaborate this.}}
+     * Cohort mean: $W_s(e)$ and $W_s$.  $\color{red}{\textsf{please elaborate this.}}$
   3. **Matched Others Baseline:**
      Compare infant $a$'s first half with infant $b$'s second half ($b \ne a$) using identical pairing $(k, k+6)$:
      $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$
