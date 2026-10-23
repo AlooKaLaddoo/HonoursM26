@@ -137,7 +137,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
    * If all pairs for an element are `NaN`, $J(e) = \text{NaN}$. The undefined fraction is tracked and reported per element in Table T2.
    * The legacy rule ($0/0 \to 0$) is evaluated separately as a Step 8 sensitivity check.
   
-     $\color{red}{\textsf{please confirm me once how these results coming from this edge case is being included in results. NaNs are good to flag out, but i recall we decided to make 0/0=0 from physiological standpoint.}}$
+   * $\color{red}{\textsf{please confirm me once how these results coming from this edge case is being included in results. NaNs are good to flag out, but i recall we decided to make 0/0=0 from physiological standpoint.}}$
 
 2. **Recording-level Weighted Jaccard $S$:**
    Evaluated across all elements simultaneously for an epoch pair $(k_1, k_2)$:
