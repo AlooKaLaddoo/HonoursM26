@@ -253,7 +253,7 @@ flowchart TD
 
 #### 5.1 Universality–Individuality 2D Plane (Step 5a)
 Plot every element in a 2D space:
-* **X-axis:** Overall Universality $U(e) = \frac{U_1(e) + U_2(e)}{2}$ ; $$\color{blue}U_s(e) = \frac{1}{171} \sum_{a < b} J_{(a,s), (b,s)}(e)$$ $$\color{blue}{\textsf{ref: phase 1}}$
+* **X-axis:** Overall Universality $U(e) = \frac{U_1(e) + U_2(e)}{2}$ ; $$\color{blue}U_s(e) = \frac{1}{171} \sum_{a < b} J_{(a,s), (b,s)}(e)$$ $\color{blue}{\textsf{ref: phase 1}}$
 * **Y-axis:** Individuality $I_{\text{diff}}(e)$
 
 Classify each element into four functional quadrants using FDR-corrected significance thresholds:
