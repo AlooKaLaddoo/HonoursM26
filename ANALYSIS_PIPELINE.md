@@ -199,6 +199,7 @@ flowchart TD
      * $\color{red}{\textsf{please elaborate this}}$
   4. **Per-infant Universality:**
      $$u_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s), (b,s)}$$
+     * $\color{red}{\textsf{how comes is it a and b? a, b are subject indices, right?}}$
   5. **Regional Universality:** Grouped average $U_s(g)$ across the 5 node regions and 15 edge region pairs.
   6. **Element-Shuffle Null Model (Significance testing):**
      * For each infant pair $(a, b)$, apply an identical random permutation $\pi$ across element labels.
