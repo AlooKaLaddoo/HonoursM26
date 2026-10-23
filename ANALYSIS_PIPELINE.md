@@ -286,7 +286,8 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
 1. **Developmental Shift in Universality ($\Delta U$):**
    * $\Delta U = U_2 - U_1$ (recording level) and $\Delta U(e) = U_2(e) - U_1(e)$ (element level).
    * Evaluate using infant-level bootstrap with FDR correction across elements.
-  $\color{red}{\textsf{elaborate the entire algorithm here.}}$
+   
+    $\color{red}{\textsf{elaborate the entire algorithm here.}}$
 2. **Decay with Inter-Session Gap:**
    * Compute Spearman correlation $\rho$ between self-similarity $M[a, a]$ and inter-session time gap (in days).
    * Compute Spearman correlation between $i_{\text{diff}}(a)$ and time gap.
