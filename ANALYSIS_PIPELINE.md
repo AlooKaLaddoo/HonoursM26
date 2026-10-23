@@ -193,12 +193,14 @@ flowchart TD
   1. **Element-level Universality:**
      $$U_s(e) = \frac{1}{171} \sum_{a < b} J_{(a,s), (b,s)}(e)$$
      Yields a $171 \times n$ matrix per feature/session.
-  2. **Recording-level Universality:**
+     * $\color{red}{\textsf{so this is network to network similarity check and iterating 12 times. right?}}$
+  3. **Recording-level Universality:**
      $$U_s = \frac{1}{171} \sum_{a < b} S_{(a,s), (b,s)}$$
-  3. **Per-infant Universality:**
+     * $\color{red}{\textsf{please elaborate this}}$
+  4. **Per-infant Universality:**
      $$u_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s), (b,s)}$$
-  4. **Regional Universality:** Grouped average $U_s(g)$ across the 5 node regions and 15 edge region pairs.
-  5. **Element-Shuffle Null Model (Significance testing):**
+  5. **Regional Universality:** Grouped average $U_s(g)$ across the 5 node regions and 15 edge region pairs.
+  6. **Element-Shuffle Null Model (Significance testing):**
      * For each infant pair $(a, b)$, apply an identical random permutation $\pi$ across element labels.
      * Recompute $U_s(e)$ across 10,000 iterations.
      * One-sided $p$-value:
