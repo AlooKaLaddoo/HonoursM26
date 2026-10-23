@@ -219,7 +219,7 @@ flowchart TD
      * Cohort mean: $W_s(e)$ and $W_s$.  $\color{red}{\textsf{please elaborate this.}}$
   3. **Matched Others Baseline:**
      Compare infant $a$'s first half with infant $b$'s second half ($b \ne a$) using identical pairing $(k, k+6)$:
-     $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$
+     $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$ $\color{red}{\textsf{this normalization corresponds to global average.}}$ $\color{red}{\textsf{what about the within subject network-level normalization?}}$
   4. **Within-Session Identifiability:** $W_s(a) - O_s(a)$ tested against 0 via infant-level bootstrap.
   5. **Odd/Even Sensitivity:** Repeat split pairing odd epochs with subsequent even epochs $(k, k+1)$.
 
