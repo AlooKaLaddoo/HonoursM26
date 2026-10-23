@@ -335,7 +335,7 @@ $\color{red}{\textsf{please elaborate the two algorithms in detail without missi
 
 To ensure conclusions are not artifacts of hyperparameter choices, rerun the primary metrics ($U_1, U_2, I_{\text{diff}}$, accuracy, taxonomy counts) across 9 specific sensitivity variations:
 
-1. **$0/0$ Replacement:** Set $0/0 \to 0$ instead of excluding `NaN`.  $\color{red}{\textsf{okay so i mentioned this above. now the point is we are doing the both eventually which is good since we observed something something from the histograms as well!}}$
+1. **$0/0$ Replacement:** Set $0/0 \to 0$ instead of excluding `NaN`.  $\color{red}{\textsf{okay so i mentioned this above.}}$ $\color{red}{\textsf{now the point is we are doing the both eventually which is good since we observed something something from the histograms as well!}}$
 2. **Combinatorial Epoch Pairing:** Average over all $12 \times 12 = 144$ epoch combinations instead of diagonal $(k, k)$.
 3. **Epoch Window Length:** Truncate to $K = 6$ epochs instead of $K = 12$.
 4. **Twin Exclusion:** Recompute with $N = 17$ infants, excluding twin pair `sub-NORB00086` and `sub-NORB00087`.
