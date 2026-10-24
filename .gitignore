@@ -1,5 +1,3 @@
-analysis_suggestions.md
-
 # Virtual environments & local runtimes
 .venv/
 env/
@@ -39,3 +37,8 @@ Thumbs.db
 .idea/
 .gemini/
 .agents/
+
+# Helper Files
+1-ANALYSIS_PIPELINE.md
+furtherAnalysis.pdf
+Methodology-Analysis.md
