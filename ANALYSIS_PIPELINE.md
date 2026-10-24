@@ -50,27 +50,27 @@ Step 0 requires all subjects to possess at least $K = 12$ expert-annotated, arti
 * Number of unique pairs within each session: $\binom{19}{2} = 171$ pairs.
 * Identifiability cross-session matrix $M$: $19 \times 19$ matrix ($19$ self pairs, $342$ cross-subject pairs).
 
-| Participant ID | Sex | Age `ses-1` (yr) | Age `ses-2` (yr) | Inter-session Gap (mo) | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
+| Participant ID | Sex | Age `ses-1` (mo) | Age `ses-2` (mo) | Inter-session Gap (mo) | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `sub-NORB00064` | M | 0.4262 | 0.4372 | 0.13 | 13 | 20 | Singleton (Short test-retest gap: ~4 days) |
-| `sub-NORB00065` | M | 0.4344 | 0.7978 | 4.36 | 20 | 20 | Singleton |
-| `sub-NORB00069` | F | 0.3852 | 0.5000 | 1.38 | 15 | 20 | Singleton (Intermediate gap: ~42 days) |
-| `sub-NORB00070` | M | 0.2541 | 0.5055 | 3.02 | 15 | 20 | Singleton |
-| `sub-NORB00075` | M | 0.2666 | 0.5055 | 2.87 | 20 | 20 | Singleton |
-| `sub-NORB00077` | M | 0.2514 | 0.4917 | 2.88 | 20 | 20 | Singleton |
-| `sub-NORB00078` | M | 0.2514 | 0.4767 | 2.70 | 20 | 20 | Singleton |
-| `sub-NORB00079` | M | 0.2459 | 0.4716 | 2.71 | 15 | 20 | Singleton |
-| `sub-NORB00080` | M | 0.2486 | 0.5583 | 3.72 | 20 | 20 | Singleton |
-| `sub-NORB00081` | F | 0.2923 | 0.5716 | 3.35 | 15 | 20 | Singleton |
-| `sub-NORB00083` | F | 0.2525 | 0.5442 | 3.50 | 20 | 20 | Singleton |
-| `sub-NORB00084` | F | 0.2775 | 0.5555 | 3.34 | 15 | 20 | Singleton |
-| `sub-NORB00086` | M | 0.2377 | 0.5250 | 3.45 | 20 | 20 | **Twin A** (Brother of `00087`) |
-| `sub-NORB00087` | M | 0.2377 | 0.5250 | 3.45 | 20 | 20 | **Twin B** (Brother of `00086`) |
-| `sub-NORB00089` | M | 0.2500 | 0.5466 | 3.56 | 24 | 20 | Singleton |
-| `sub-NORB00090` | F | 0.2514 | 0.5300 | 3.34 | 15 | 20 | Singleton |
-| `sub-NORB00094` | F | 0.2642 | 0.5416 | 3.33 | 12 | 20 | Singleton |
-| `sub-NORB00096` | M | 0.2274 | 0.5000 | 3.27 | 20 | 20 | Singleton |
-| `sub-NORB00103` | F | 0.2410 | 0.5233 | 3.39 | 35 | 20 | Singleton |
+| `sub-NORB00064` | M | 5.11 | 5.25 | 0.13 | 13 | 20 | Singleton (Short test-retest gap: ~4 days) |
+| `sub-NORB00065` | M | 5.21 | 9.57 | 4.36 | 20 | 20 | Singleton |
+| `sub-NORB00069` | F | 4.62 | 6.00 | 1.38 | 15 | 20 | Singleton (Intermediate gap: ~42 days) |
+| `sub-NORB00070` | M | 3.05 | 6.07 | 3.02 | 15 | 20 | Singleton |
+| `sub-NORB00075` | M | 3.20 | 6.07 | 2.87 | 20 | 20 | Singleton |
+| `sub-NORB00077` | M | 3.02 | 5.90 | 2.88 | 20 | 20 | Singleton |
+| `sub-NORB00078` | M | 3.02 | 5.72 | 2.70 | 20 | 20 | Singleton |
+| `sub-NORB00079` | M | 2.95 | 5.66 | 2.71 | 15 | 20 | Singleton |
+| `sub-NORB00080` | M | 2.98 | 6.70 | 3.72 | 20 | 20 | Singleton |
+| `sub-NORB00081` | F | 3.51 | 6.86 | 3.35 | 15 | 20 | Singleton |
+| `sub-NORB00083` | F | 3.03 | 6.53 | 3.50 | 20 | 20 | Singleton |
+| `sub-NORB00084` | F | 3.33 | 6.67 | 3.34 | 15 | 20 | Singleton |
+| `sub-NORB00086` | M | 2.85 | 6.30 | 3.45 | 20 | 20 | **Twin A** (Brother of `00087`) |
+| `sub-NORB00087` | M | 2.85 | 6.30 | 3.45 | 20 | 20 | **Twin B** (Brother of `00086`) |
+| `sub-NORB00089` | M | 3.00 | 6.56 | 3.56 | 24 | 20 | Singleton |
+| `sub-NORB00090` | F | 3.02 | 6.36 | 3.34 | 15 | 20 | Singleton |
+| `sub-NORB00094` | F | 3.17 | 6.50 | 3.33 | 12 | 20 | Singleton |
+| `sub-NORB00096` | M | 2.73 | 6.00 | 3.27 | 20 | 20 | Singleton |
+| `sub-NORB00103` | F | 2.89 | 6.28 | 3.39 | 35 | 20 | Singleton |
 
 ---
 
@@ -143,7 +143,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
 
 ### 4.2 Epoch Pairing Schemes ($P$)
 
-| Comparison | Description | Pairing Set $P$ | Count $|P|$ |
+| Comparison | Description | Pairing Set $P$ | Count $\lvert P \rvert$ |
 | :--- | :--- | :--- | :---: |
 | **A, C, D** | Cross-recording (between infants or between sessions) | Matched indices: $(k, k)$ for $k \in \{1, \dots, K\}$ | $K = 12$ |
 | **B** | Within-session split-half stability | Half-shift: $(k, k + K/2)$ for $k \in \{1, \dots, K/2\}$ | $K/2 = 6$ |
@@ -157,7 +157,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
 flowchart TD
     Step0["Step 0: Verification & Bookkeeping (N=19, Table T5)"] --> Step1["Step 1: Tensor Construction (X_f for 26 Features)"]
     Step1 --> Step2["Step 2: Comparison A - Universality (U_1, U_2, Delta U)"]
-    Step1 --> Step3["Step 3: Comparison B - Within-Session Stability (W_1, W_2)"]
+    Step1 --> Step3["Step 3: Comparison B - Within-Session, Within-Subject Stability (W_1, W_2)"]
     Step1 --> Step4["Step 4: Comparisons C & D - Identifiability Matrix M (I_self, I_others, I_diff)"]
     Step2 --> Step5["Step 5: Axis Combination - Taxonomy (5a) & ANOVA (5b)"]
     Step4 --> Step5
