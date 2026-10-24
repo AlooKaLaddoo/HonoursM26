@@ -1,6 +1,6 @@
 # Longitudinal Analysis Pipeline: Universality and Individuality of Infant EEG Network Constituents
 
-**Author:** Based on the specification by @Adi B (*Oct 20, 2026*)  
+**Author:** Based on the specification by @Aditi Bose (*Oct 20, 2026*)  
 **Workspace:** `/home/aloo/HonoursM26`  
 **Target Cohort:** $N = 19$ longitudinal infants across 2 sessions (`ses-1` and `ses-2`) with $K = 12$ artifact-free epochs each.
 
@@ -19,7 +19,7 @@ This is achieved using a unified similarity metric—the **weighted Jaccard simi
 │               → Quantifies UNIVERSALITY (U_1, U_2) across the population               │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ Comparison B: Within-subject, within-session (first K/2 vs second K/2 epochs)          │
-│               → Quantifies WITHIN-SESSION STABILITY (W_1, W_2) & short-term ceiling   │
+│               → Quantifies WITHIN-SESSION STABILITY (W_1, W_2) & short-term ceiling    │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ Comparison C: Within-subject, between-session (same infant across ~3-4 months)         │
 │               → Quantifies LONGITUDINAL SELF-SIMILARITY (I_self)                       │
@@ -30,7 +30,7 @@ This is achieved using a unified similarity metric—the **weighted Jaccard simi
 ```
 
 > **Key Theoretical Axiom:** Individuality is **not** Comparison C alone. It is defined as **Differential Identifiability**:
-> $$I_{\text{diff}} = I_{\text{self}} - I_{\text{others}}$$
+> $$I_{\text{diff}} = I_{\text{self}} - I_{\text{others}}$$ (Amico2018quest; http://dx.doi.org/10.1038/s41598-018-25089-1)
 > Because shared developmental maturation affects both $I_{\text{self}}$ and $I_{\text{others}}$ across the 3-month gap, subtracting $I_{\text{others}}$ isolates true individual specificity from normative maturation.
 
 ---
@@ -43,6 +43,7 @@ Step 0 requires all subjects to possess at least $K = 12$ expert-annotated, arti
 * `sub-NORB00074`: Excluded (only 1 window at `ses-1`).
 * `sub-NORB00085`: Excluded (only 8 windows at `ses-1`).
 * `sub-NORB00082`: Excluded (20 windows at `ses-1`, but only **1 window at `ses-2`**).
+ $\color{red}{\textsf{did u cross-check these from metedata itself?}}$ 
 
 **Selected Cohort:** Exactly **19 infants** satisfy $K \ge 12$ in both sessions. The first $K = 12$ chronological windows are used uniformly.
 
@@ -50,7 +51,7 @@ Step 0 requires all subjects to possess at least $K = 12$ expert-annotated, arti
 * Number of unique pairs within each session: $\binom{19}{2} = 171$ pairs.
 * Identifiability cross-session matrix $M$: $19 \times 19$ matrix ($19$ self pairs, $342$ cross-subject pairs).
 
-| Participant ID | Sex | Age `ses-1` (yr) | Age `ses-2` (yr) | Inter-session Gap (mo) | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
+| Participant ID | Sex | Age `ses-1` (yr) $\color{red}{\textsf{convert to (mo)}}$ | Age `ses-2` (yr) $\color{red}{\textsf{convert to (mo)}}$ | Inter-session Gap (mo) | Epochs `ses-1` | Epochs `ses-2` | Note / Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `sub-NORB00064` | M | 0.4262 | 0.4372 | 0.13 | 13 | 20 | Singleton (Short test-retest gap: ~4 days) |
 | `sub-NORB00065` | M | 0.4344 | 0.7978 | 4.36 | 20 | 20 | Singleton |
@@ -83,6 +84,7 @@ where:
 * **Sessions ($S=2$):** $s \in \{1, 2\}$ (`ses-1`, `ses-2`).
 * **Epochs ($K=12$):** $k \in \{1, \dots, 12\}$ chronological artifact-free segments.
 * **Elements ($n$):** $n = 19$ for node features; $n = 171$ for edge features.
+  $\color{blue}{\textsf{total no of feature elements=8664(vertices),77976(edges); for one type of centrality}}$
 
 ### 3.1 Fixed Element Ordering
 To ensure strict reproducibility:
@@ -98,7 +100,7 @@ To ensure strict reproducibility:
 | **f02** | Broadband | Weighted | Node Betweenness | 19 | Brandes algorithm, $d_{ij} = 1/w_{ij}$ |
 | **f03** | Broadband | Weighted | Edge Betweenness | 171 | Girvan-Newman, $d_{ij} = 1/w_{ij}$ |
 | **f04** | Broadband | Weighted | Node Strength | 19 | Sum of incident edge weights |
-| **f05** | Broadband | Weighted | Edge Strength | 171 | Average strength of incident endpoints |
+| **f05** | Broadband | Weighted | Edge Strength | 171 | $\color{blue}{\textsf{Corrected}}$ average strength of incident endpoints |
 | **f06** | Broadband | Weighted | Node Eigenvector | 19 | Principal eigenvector of $W$ |
 | **f07** | Broadband | Weighted | Edge Eigenvector | 171 | Line graph eigenvector centrality |
 | **f08** | Broadband | Weighted | Node Closeness | 19 | Harmonic/Shortest path, $d_{ij} = 1/w_{ij}$ |
@@ -107,7 +109,7 @@ To ensure strict reproducibility:
 | **f11** | Broadband | Binary | Node Betweenness | 19 | Unweighted shortest paths |
 | **f12** | Broadband | Binary | Edge Betweenness | 171 | Unweighted shortest paths |
 | **f13** | Broadband | Binary | Node Degree | 19 | Unweighted degree |
-| **f14** | Broadband | Binary | Edge Strength | 171 | Average degree of incident endpoints |
+| **f14** | Broadband | Binary | Edge Strength | 171 | $\color{blue}{\textsf{Corrected}}$ average degree of incident endpoints |
 | **f15** | Broadband | Binary | Node Eigenvector | 19 | Principal eigenvector of $A$ |
 | **f16** | Broadband | Binary | Edge Eigenvector | 171 | Line graph unweighted eigenvector |
 | **f17** | Broadband | Binary | Node Closeness | 19 | Unweighted shortest path |
@@ -121,6 +123,7 @@ To ensure strict reproducibility:
 | **f25** | Beta (13–30 Hz) | Weighted | Edge Weight $W_{ij}$ | 171 | Absolute Pearson $r$ on filtered EEG |
 | **f26** | Beta (13–30 Hz) | Binary | Edge Adjacency $A_{ij}$ | 171 | GCC adaptive threshold ($\tau_c$) |
 
+* $\color{red}{\textsf{NOTE: there are sub-bands like }\alpha_1\textsf{, }\alpha_2\textsf{, and so on. In literature people have shown improved/emerging results within these sub-ranges. We need to look at these later.}}$
 ---
 
 ## 4. Mathematical Definitions & Methodological Rules
@@ -134,14 +137,16 @@ For two feature vectors $x_1, x_2 \ge 0$:
    * If all pairs for an element are `NaN`, $J(e) = \text{NaN}$. The undefined fraction is tracked and reported per element in Table T2.
    * The legacy rule ($0/0 \to 0$) is evaluated separately as a Step 8 sensitivity check.
 
+     $\color{red}{\textsf{please confirm once how results from this edge case}}$ $\color{red}{\textsf{are being included in the results.}}$ $\color{red}{\textsf{NaNs are good to flag out, but I recall we decided}}$ $\color{red}{\textsf{to make 0/0 = 0 from a physiological standpoint.}}$
+     
 2. **Recording-level Weighted Jaccard $S$:**
    Evaluated across all elements simultaneously for an epoch pair $(k_1, k_2)$:
    $$S^{(k_1, k_2)} = \frac{\sum_{e=1}^n \min\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}{\sum_{e=1}^n \max\{x_{R_1, k_1}(e), x_{R_2, k_2}(e)\}}$$
-   * Joint absences ($0+0$) naturally contribute $0$ to both numerator and denominator sums without requiring a special exception.
+   * Joint absences ($0+0$) naturally contribute $0$ to both numerator and denominator sums without requiring a special exception. $\color{red}{\textsf{same edge case here}}$
    * Overall recording similarity is the mean across the epoch pairing set $P$:
      $$S_{R_1 R_2} = \frac{1}{|P|} \sum_{(k_1, k_2) \in P} S^{(k_1, k_2)}$$
 
-### 4.2 Epoch Pairing Schemes ($P$)
+### 4.2 Epoch Pairing Schemes ($P$) $\color{red}{\textsf{SOME FORMATTING ISSUE HERE}}$
 
 | Comparison | Description | Pairing Set $P$ | Count $|P|$ |
 | :--- | :--- | :--- | :---: |
@@ -157,7 +162,7 @@ For two feature vectors $x_1, x_2 \ge 0$:
 flowchart TD
     Step0["Step 0: Verification & Bookkeeping (N=19, Table T5)"] --> Step1["Step 1: Tensor Construction (X_f for 26 Features)"]
     Step1 --> Step2["Step 2: Comparison A - Universality (U_1, U_2, Delta U)"]
-    Step1 --> Step3["Step 3: Comparison B - Within-Session Stability (W_1, W_2)"]
+    Step1 --> Step3["Step 3: Comparison B - Within-Session, <b>within subject</b> Stability (W_1, W_2)"]
     Step1 --> Step4["Step 4: Comparisons C & D - Identifiability Matrix M (I_self, I_others, I_diff)"]
     Step2 --> Step5["Step 5: Axis Combination - Taxonomy (5a) & ANOVA (5b)"]
     Step4 --> Step5
@@ -166,6 +171,8 @@ flowchart TD
     Step2 & Step3 & Step4 & Step5 & Step6 --> Step7["Step 7: Statistical Inference (Bootstrap, Permutations, FDR)"]
     Step7 --> Step8["Step 8: 9 Sensitivity & Robustness Checks (Table T4)"]
     Step7 --> Deliverables["Deliverables: Tables T1-T6, Figures 1-7, .npy Arrays"]
+
+    style Step3 color:#1f6feb,stroke:#1f6feb,stroke-width:2px
 ```
 
 ---
@@ -175,8 +182,8 @@ flowchart TD
 * **Execution:**
   1. Load precomputed absolute correlation matrices for `ses-1` and `ses-2` from `correlation_matrices_segment_wise_absolute/`.
   2. Apply GCC thresholding on each window to obtain binary adjacency $A_{ij}$ (saving the critical threshold $\tau_c$ and edge density).
-  3. Compute graph centrality measures (node/edge betweenness, strength, eigenvector, closeness) via `networkx`.
-  4. For the 8 frequency band features, load filtered segments from EDFs for Delta, Theta, Alpha, Beta, compute Pearson $|r|$ and GCC binarization for both sessions.
+  3. Compute graph centrality measures (node/edge: betweenness, strength, eigenvector, closeness) via `networkx`.
+  4. For the 8 frequency band features, load filtered segments from EDFs for Delta, Theta, Alpha, Beta, compute Pearson $|r|$ and GCC binarization for both sessions. $\color{red}{\textsf{did you do segment-wise filtering; or filtering on the entire raw time signals and then extracting the first 12 consecutive segments?}}$ $\color{red}{\textsf{we need to do the later one to avoid the edge effects for short length signal segment (ref: manuscript).}}$
 
 ---
 
@@ -186,12 +193,15 @@ flowchart TD
   1. **Element-level Universality:**
      $$U_s(e) = \frac{1}{171} \sum_{a < b} J_{(a,s), (b,s)}(e)$$
      Yields a $171 \times n$ matrix per feature/session.
-  2. **Recording-level Universality:**
+     * $\color{red}{\textsf{so this is network to network similarity check and iterating 12 times. right?}}$
+  3. **Recording-level Universality:**
      $$U_s = \frac{1}{171} \sum_{a < b} S_{(a,s), (b,s)}$$
-  3. **Per-infant Universality:**
+     * $\color{red}{\textsf{please elaborate this}}$
+  4. **Per-infant Universality:**
      $$u_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s), (b,s)}$$
-  4. **Regional Universality:** Grouped average $U_s(g)$ across the 5 node regions and 15 edge region pairs.
-  5. **Element-Shuffle Null Model (Significance testing):**
+     * $\color{red}{\textsf{how comes is it a and b?}}$ $\color{red}{\textsf{a, b are subject indices, right?}}$ $\color{red}{\textsf{then to me, 'Universality Across the Population' and 'Per-infant Universality' are two contradicting terms.}}$
+  5. **Regional Universality:** Grouped average $U_s(g)$ across the 5 node regions and 15 edge region pairs.
+  6. **Element-Shuffle Null Model (Significance testing):**
      * For each infant pair $(a, b)$, apply an identical random permutation $\pi$ across element labels.
      * Recompute $U_s(e)$ across 10,000 iterations.
      * One-sided $p$-value:
@@ -205,13 +215,13 @@ flowchart TD
   1. **Epoch Split:** For each infant and session, split 12 epochs into First Half ($k \in \{1, \dots, 6\}$) and Second Half ($k \in \{7, \dots, 12\}$), pairing $(k, k+6)$.
   2. **Self-Similarity:**
      * Element-level: $W_s(a, e) = J_{(a,s,\text{first}), (a,s,\text{second})}(e)$
-     * Recording-level: $W_s(a) = S_{(a,s,\text{first}), (a,s,\text{second})}$
-     * Cohort mean: $W_s(e)$ and $W_s$.
+     * Recording-level: $W_s(a) = S_{(a,s,\text{first}), (a,s,\text{second})}$ $\color{red}{\textsf{please elaborate this i.}}$ $\color{red}{\textsf{e.}}$ $\color{red}{\textsf{at which level the network reduction is happening.}}$ $\color{red}{\textsf{do the same above.}}$
+     * Cohort mean: $W_s(e)$ and $W_s$.  $\color{red}{\textsf{please elaborate this.}}$
   3. **Matched Others Baseline:**
      Compare infant $a$'s first half with infant $b$'s second half ($b \ne a$) using identical pairing $(k, k+6)$:
-     $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$
+     $$O_s(a) = \frac{1}{18} \sum_{b \ne a} S_{(a,s,\text{first}), (b,s,\text{second})}$$ $\color{red}{\textsf{this normalization corresponds to global average.}}$ $\color{red}{\textsf{what about the within subject network-level normalization?}}$
   4. **Within-Session Identifiability:** $W_s(a) - O_s(a)$ tested against 0 via infant-level bootstrap.
-  5. **Odd/Even Sensitivity:** Repeat split pairing odd epochs with subsequent even epochs $(k, k+1)$.
+  5. **Odd/Even Sensitivity:** Repeat split pairing odd epochs with subsequent even epochs $(k, k+1)$. $\color{red}{\textsf{please elaborate this.}}$
 
 ---
 
@@ -220,7 +230,8 @@ flowchart TD
 * **Metrics:**
   1. **Identifiability Matrix $M \in \mathbb{R}^{19 \times 19}$:**
      $$M[a, b] = S_{(a, 1), (b, 2)}$$
-     Rows = `ses-1`, Columns = `ses-2`.
+     Rows = `ses-1`, Columns = `ses-2`. 
+     $\color{red}{\textsf{here 19 is the subject sample size, right?}}$
   2. **Global Identifiability Parameters:**
      * Self-similarity (Comparison C):
        $$I_{\text{self}} = \frac{1}{19} \sum_{a=1}^{19} M[a, a]$$
@@ -229,11 +240,12 @@ flowchart TD
      * **Differential Identifiability:**
        $$I_{\text{diff}} = (I_{\text{self}} - I_{\text{others}}) \times 100$$
   3. **Identification Accuracy (1-Nearest Neighbor):**
-     * **Forward (`ses-1` $\to$ `ses-2`):** For row $a$, predicted identity is $\arg\max_b M[a, b]$. Correct if $b = a$.
+     * **Forward (`ses-1` $\to$ `ses-2`):** For row $a$, predicted identity is $\arg\max_b M[a, b]$. Correct if $b = a$ $\color{red}{\textsf{specify a,b here at this final condition}}$.
      * **Backward (`ses-2` $\to$ `ses-1`):** For column $b$, predicted identity is $\arg\max_a M[a, b]$. Correct if $a = b$.
      * Ties count as incorrect. Chance baseline is $1/19 = 5.26\%$.
   4. **Element-level Identifiability:**
      Compute $M_e[a, b] = J_{(a, 1), (b, 2)}(e)$ to yield $I_{\text{self}}(e), I_{\text{others}}(e)$, and $I_{\text{diff}}(e)$.
+     $\color{red}{\textsf{are these somewhere getting used at downstream pipeline?}}$.
 
 ---
 
@@ -241,8 +253,8 @@ flowchart TD
 
 #### 5.1 Universality–Individuality 2D Plane (Step 5a)
 Plot every element in a 2D space:
-* **X-axis:** Overall Universality $U(e) = \frac{U_1(e) + U_2(e)}{2}$
-* **Y-axis:** Individuality $I_{\text{diff}}(e)$
+* **X-axis:** Overall Universality $U(e) = \frac{U_1(e) + U_2(e)}{2}$ ; $$\color{red}U_s(e) = \frac{1}{171} \sum_{a < b} J_{(a,s), (b,s)}(e)$$ $\color{red}{\textsf{--ref: phase 2.}}$ $\color{red}{\textsf{in such case, how do you squeeze the vector quantity }U_1(e)\textsf{, let's say?}}$
+* **Y-axis:** Individuality $I_{\text{diff}}(e)$  $\color{red}{\textsf{add mathematical expression}}$
 
 Classify each element into four functional quadrants using FDR-corrected significance thresholds:
 
@@ -253,8 +265,8 @@ Classify each element into four functional quadrants using FDR-corrected signifi
 | **Universal & Individual**| **Significant** (both sessions) | **Significant** | High shared baseline with stable infant-specific modulation |
 | **Variable / Redundant** | Not significant | Not significant | Fluctuating or uninformative constituents |
 
-#### 5.2 State vs. Trait Variance Decomposition (Step 5b)
-On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ sessions} \times 12 \text{ epochs} = 456 \text{ observations}$):
+#### 5.2 State vs. Trait Variance Decomposition (Step 5b)  $\color{red}{\textsf{FIX THE FORMATTING and explain me the results first along with implementation from code}}$
+On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ sessions} \times 12 \text{ epochs} = 456 \text{ observations}{\color{blue}\textsf{/TEFBNs}}$):  ${\color{blue}\textsf{TEFBNs:Time Evolving Functional Brain Networks}}$
 1. **Rank-based Inverse Normal Transformation:**
    Transform $x(e)$ across all 456 observations to resolve skewness and zero inflation.
 2. **Linear Mixed-Effects Model:**
@@ -274,21 +286,25 @@ On the raw epoch values $x_{a, s, k}(e)$ ($19 \text{ infants} \times 2 \text{ se
 1. **Developmental Shift in Universality ($\Delta U$):**
    * $\Delta U = U_2 - U_1$ (recording level) and $\Delta U(e) = U_2(e) - U_1(e)$ (element level).
    * Evaluate using infant-level bootstrap with FDR correction across elements.
+   
+    $\color{red}{\textsf{elaborate the entire algorithm here.}}$
 2. **Decay with Inter-Session Gap:**
    * Compute Spearman correlation $\rho$ between self-similarity $M[a, a]$ and inter-session time gap (in days).
-   * Compute Spearman correlation between $i_{\text{diff}}(a)$ and time gap.
-   * Null model: 10,000 permutations of the interval vector.
+   * Compute Spearman correlation between $i_{\text{diff}}(a)$ and time gap.  $\color{red}{\textsf{what is }i_{\text{diff}}(a)\textsf{?}}$
+   * Null model: 10,000 permutations of the interval vector.   $\color{red}{\textsf{do it for 50000, 100000, 2000000 and do check for intermediate permutaion value as well based on your observation from results produced}}$
    * Specific reporting: Highlight short-gap test-retest infant `sub-NORB00064` (4 days) and intermediate infant `sub-NORB00069` (42 days).
 3. **Age Discrepancy vs. Network Similarity (Mantel Test):**
-   * Matrix 1: $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$.
-   * Matrix 2: $19 \times 19$ absolute age difference matrix $D[a, b] = |\text{age}_a - \text{age}_b|$ (days).
+   * Matrix 1: $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$.  $\color{red}{\textsf{so is it subject }\times\textsf{ subject for one particular session?}}$ $\color{red}{\textsf{is it a symmetric matrix?}}$
+   * Matrix 2: $19 \times 19$ absolute age difference matrix $D[a, b] = |\text{age}_a - \text{age}_b|$ (days).   $\color{red}{\textsf{same question as above}}$
    * Statistic: Spearman rank correlation $\rho$ across the 171 upper-triangle elements.
-   * Null model: 10,000 simultaneous row/column infant permutations of matrix $D$.
+   * Null model: 10,000 simultaneous row/column infant permutations of matrix $D$.   $\color{red}{\textsf{do it for 50000, 100000, 2000000 and do check for intermediate permutaion value as well based on your observation from results produced}}$
 4. **Twin / Sibling Pair Analysis (`sub-NORB00086` & `sub-NORB00087` — Table T6):**
    * Percentile rank of sibling pair similarity $S_{(86, s), (87, s)}$ among all 171 pairs.
    * Rank against matched control pairs (pairs involving either sibling, and non-sibling pairs with $|\Delta\text{age}| \le 7$ days).
    * Cross-session cross-identification: Evaluate $M[86, 87]$ and $M[87, 86]$ to determine if twin A is misidentified as twin B.
    * Shared elements: Elements where sibling similarity exceeds the 95th percentile of non-sibling pairs.
+
+$\color{red}{\textsf{it's to be looked upon as a special case study.}}$ $\color{red}{\textsf{if results come out nice (presentable), we can make a separate section/subsection just focusing on this.}}$ 
 
 ---
 
@@ -311,21 +327,23 @@ Statistical Inference Rules:
    * Identifiability null: Randomly permute the columns of $M$ (`ses-2` labels) to obtain the null distribution for $I_{\text{diff}}$ and identification accuracy.
    * Element-wise identifiability: Apply the identical column permutation across all element matrices $M_e$ simultaneously, preserving spatial covariance.
 
+$\color{red}{\textsf{please elaborate the two algorithms in detail without missing out on any technicalities in our context.}}$
+
 ---
 
 ### Phase 8: Robustness & Sensitivity Checks (Step 8 — Table T4)
 
 To ensure conclusions are not artifacts of hyperparameter choices, rerun the primary metrics ($U_1, U_2, I_{\text{diff}}$, accuracy, taxonomy counts) across 9 specific sensitivity variations:
 
-1. **$0/0$ Replacement:** Set $0/0 \to 0$ instead of excluding `NaN`.
-2. **Combinatorial Epoch Pairing:** Average over all $12 \times 12 = 144$ epoch combinations instead of diagonal $(k, k)$.
+1. **$0/0$ Replacement:** Set $0/0 \to 0$ instead of excluding `NaN`.  $\color{red}{\textsf{okay so i mentioned this above.}}$ $\color{red}{\textsf{now the point is we are doing the both eventually which is good since we observed something something from the histograms as well!}}$
+2. **Combinatorial Epoch Pairing:** Average over all $12 \times 12 = 144$ epoch combinations instead of diagonal $(k, k)$.  $\color{red}{\textsf{elaborate this in detail.}}$
 3. **Epoch Window Length:** Truncate to $K = 6$ epochs instead of $K = 12$.
 4. **Twin Exclusion:** Recompute with $N = 17$ infants, excluding twin pair `sub-NORB00086` and `sub-NORB00087`.
 5. **Pattern-Only Normalization:** Divide each epoch vector by its $L_1$ sum ($\sum_e x(e) = 1$) to remove global amplitude shifts before computing Jaccard.
-6. **Reference Montage:** Re-reference continuous EEG to average reference before computing correlation matrices.
-7. **Volume Conduction Control:** Compute debiased weighted phase lag index (dwPLI) via MNE Connectivity instead of Pearson $|r|$.
-8. **Fixed-Density Binarization:** Replace GCC thresholding with fixed top-$m$ edge thresholding (where $m = \text{median GCC edge count}$).
-9. **Physical Distance Regression:** Regress Euclidean 3D inter-electrode distance out of edge centralities, re-evaluating universality on distance-adjusted residuals.
+6. **Reference Montage:** Re-reference continuous EEG to average reference before computing correlation matrices.    $\color{red}{\textsf{explain how did you do it by citing reference article.}}$ $\color{red}{\textsf{this is a sensitive thing that needs literature back-up.}}$ $\color{red}{\textsf{if we do this, need to do it carefully.}}$
+7. **Volume Conduction Control:** Compute debiased weighted phase lag index (dwPLI) via MNE Connectivity instead of Pearson $|r|$.  $\color{red}{\textsf{need to follow the MNE documentation without making any error; so utilize and cite that.}}$  $\color{red}{\textsf{it's way too crucial.}}$
+8. **Fixed-Density Binarization:** Replace GCC thresholding with fixed top-$m$ edge thresholding (where $m = \text{median GCC edge count}$).   $\color{red}{\textsf{elaborate the entire method without missing out on anything tiny technicality.}}$
+9. **Physical Distance Regression:** Regress Euclidean 3D inter-electrode distance out of edge centralities, re-evaluating universality on distance-adjusted residuals.   $\color{red}{\textsf{elaborate this in detail that how you did it.}}$
 
 ---
 

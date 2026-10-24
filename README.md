@@ -13,7 +13,7 @@ Below is a complete map of the project files and directories with short, simple 
 ```text
 HonoursM26/
 ├── run_full_analysis.py            # Master one-click runner executing all analysis phases (1 to 9)
-├── ANALYSIS_PIPELINE.md            # Complete theoretical framework, mathematical axioms, and blueprint
+├── ANALYSIS_PIPELINE.md  (Q)          # Complete theoretical framework, mathematical axioms, and blueprint
 ├── Methodology-Analysis.md         # Detailed methodological notes on Jaccard comparison framework
 ├── Dataset-Documentation.md        # Summary of the BIDS infant dataset, channels, and recording setup
 │
