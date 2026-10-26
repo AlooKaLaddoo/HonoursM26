@@ -12,19 +12,44 @@ Computes:
   - Undefined (0/0) occurrence tracking per element
 Saves intermediate pair arrays and summary JSON.
 """
-import time
 import json
-import numpy as np
-from pathlib import Path
-from itertools import combinations
+import sys
+import time
 from concurrent.futures import ProcessPoolExecutor
+from itertools import combinations
+from pathlib import Path
+
+import numpy as np
 from statsmodels.stats.multitest import multipletests
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    NODE_REGIONS, REGION_PAIRS, FEATURE_DEFS, OUTPUT_TENSORS_DIR
-)
-from .utils import element_J, recording_S
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        NODE_REGIONS,
+        OUTPUT_TENSORS_DIR,
+        REGION_PAIRS,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+else:
+    from .config import (
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        NODE_REGIONS,
+        OUTPUT_TENSORS_DIR,
+        REGION_PAIRS,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
 
 def get_node_region(node: str) -> str:
     return NODE_REGIONS.get(node, "Unknown")
@@ -91,7 +116,15 @@ def _run_perm_worker(seed: int, n_perms: int, A_stacked: np.ndarray, B_stacked: 
         
     return null_elem_ge, null_global_vals
 
-def run_element_shuffle_null(A_stacked: np.ndarray, B_stacked: np.ndarray, dim: int, obs_U_elem: np.ndarray, obs_U_global: float, n_permutations: int = 10000, n_workers: int = 8):
+def run_element_shuffle_null(
+    A_stacked: np.ndarray,
+    B_stacked: np.ndarray,
+    dim: int,
+    obs_U_elem: np.ndarray,
+    obs_U_global: float,
+    n_permutations: int = 10000,
+    n_workers: int = 8,
+) -> tuple[np.ndarray, float]:
     """Runs 10,000 element-shuffle permutations across multiple worker processes."""
     perms_per_worker = n_permutations // n_workers
     remainder = n_permutations % n_workers
@@ -105,10 +138,10 @@ def run_element_shuffle_null(A_stacked: np.ndarray, B_stacked: np.ndarray, dim: 
         ]
         results = [f.result() for f in futures]
         
-    total_elem_ge = sum(r[0] for r in results)
+    total_elem_ge: np.ndarray = np.sum([r[0] for r in results], axis=0)
     all_null_globals = np.concatenate([r[1] for r in results])
     
-    p_elem = (1.0 + total_elem_ge) / (1.0 + n_permutations)
+    p_elem: np.ndarray = (1.0 + total_elem_ge) / (1.0 + n_permutations)
     p_global = (1.0 + np.sum(all_null_globals >= obs_U_global)) / (1.0 + n_permutations)
     
     return p_elem, float(p_global)
@@ -131,9 +164,10 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
         fname = meta["name"]
         dim = meta["dim"]
         ftype = meta["type"]
-        labels = NODE_LABELS if ftype == "node" else EDGE_LABELS
         
         tensor_path = OUTPUT_TENSORS_DIR / f"X_{fid}.npy"
+        if not tensor_path.exists():
+            raise FileNotFoundError(f"Feature tensor not found: {tensor_path}. Run Phase 1 first.")
         X = np.load(tensor_path) # (19, 2, 12, dim)
         
         feat_res = {
@@ -162,7 +196,7 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
             
             # Undefined 0/0 tracking
             undef_mask = (max_v == 0)
-            undef_frac = np.mean(undef_mask, axis=(0, 1)) # per element
+            undef_frac: np.ndarray = np.asarray(np.mean(undef_mask, axis=(0, 1))) # per element
             
             with np.errstate(divide="ignore", invalid="ignore"):
                 j_elem = np.where(max_v > 0, min_v / max_v, np.nan)
@@ -214,7 +248,8 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
             )
             
             # FDR correction across elements
-            _, q_elem, _, _ = multipletests(p_elem, method="fdr_bh")
+            fdr_results = multipletests(p_elem, method="fdr_bh")
+            q_elem: np.ndarray = np.asarray(fdr_results[1])
             
             # Infant bootstrap CI
             boot_stats = infant_pair_bootstrap(S_mat, B=10000, seed=42 + ses_idx)

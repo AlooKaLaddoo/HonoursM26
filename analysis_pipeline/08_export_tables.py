@@ -9,16 +9,49 @@ Compiles results from all preceding phases into publication-ready tables:
   - Table T6: Sibling / Twin Analysis (Twin comparisons for sub-NORB00086 & sub-NORB00087)
 """
 import json
-import numpy as np
-import pandas as pd
+import sys
 from pathlib import Path
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, NODE_LABELS, EDGE_LABELS,
-    NODE_REGIONS, REGION_PAIRS, FEATURE_DEFS,
-    OUTPUT_TENSORS_DIR, TABLES_DIR, DATASET_PATH
-)
-from .utils import load_annotations, get_node_hemisphere, get_edge_hemisphere_pair
+import numpy as np
+import pandas as pd
+
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        NODE_LABELS,
+        NODE_REGIONS,
+        OUTPUT_TENSORS_DIR,
+        SUBJECT_IDS,
+        TABLES_DIR,
+    )
+    from analysis_pipeline.utils import (
+        get_edge_hemisphere_pair,
+        get_node_hemisphere,
+        load_annotations,
+    )
+else:
+    from .config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        NODE_LABELS,
+        NODE_REGIONS,
+        OUTPUT_TENSORS_DIR,
+        SUBJECT_IDS,
+        TABLES_DIR,
+    )
+    from .utils import (
+        get_edge_hemisphere_pair,
+        get_node_hemisphere,
+        load_annotations,
+    )
+
 
 def df_to_markdown(df: pd.DataFrame) -> str:
     """Format DataFrame as standard GitHub Flavored Markdown table without external dependencies."""
@@ -30,14 +63,17 @@ def df_to_markdown(df: pd.DataFrame) -> str:
         lines.append("| " + " | ".join(vals) + " |")
     return "\n".join(lines)
 
+
 def get_electrode_3d_distances_dict():
     """Returns mapping from edge label 'u-v' to Euclidean distance in mm."""
     elec_path = DATASET_PATH / "sub-NORB00001" / "ses-1" / "eeg" / "sub-NORB00001_ses-1_electrodes.tsv"
+    if not elec_path.exists():
+        raise FileNotFoundError(f"Electrode coordinates file not found: {elec_path}")
     df = pd.read_csv(elec_path, sep="\t")
-    coords = {}
-    for _, row in df.iterrows():
-        if row["name"] in NODE_LABELS:
-            coords[row["name"]] = np.array([float(row["x"]), float(row["y"]), float(row["z"])])
+    coords: dict[str, np.ndarray] = {}
+    for name, x, y, z in zip(df["name"], df["x"], df["y"], df["z"]):
+        if str(name) in NODE_LABELS:
+            coords[str(name)] = np.array([float(x), float(y), float(z)])
             
     dist_map = {}
     for edge in EDGE_LABELS:
@@ -46,6 +82,7 @@ def get_electrode_3d_distances_dict():
         dist_map[edge] = round(d, 2)
     return dist_map
 
+
 def export_all_tables():
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
     print("=" * 80)
@@ -53,19 +90,31 @@ def export_all_tables():
     print("=" * 80)
     
     # Load results databases
-    with open(OUTPUT_TENSORS_DIR / "universality_results.json") as f:
+    u_file = OUTPUT_TENSORS_DIR / "universality_results.json"
+    w_file = OUTPUT_TENSORS_DIR / "within_session_results.json"
+    i_file = OUTPUT_TENSORS_DIR / "identifiability_results.json"
+    tax_file = OUTPUT_TENSORS_DIR / "taxonomy_results.json"
+    var_file = OUTPUT_TENSORS_DIR / "variance_results.json"
+    dev_file = OUTPUT_TENSORS_DIR / "developmental_results.json"
+    twin_file = OUTPUT_TENSORS_DIR / "twin_results.json"
+    
+    for fpath in (u_file, w_file, i_file, tax_file, var_file, dev_file, twin_file):
+        if not fpath.exists():
+            raise FileNotFoundError(f"Prerequisite results database missing: {fpath}. Run earlier pipeline phases first.")
+            
+    with open(u_file) as f:
         u_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "within_session_results.json") as f:
+    with open(w_file) as f:
         w_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "identifiability_results.json") as f:
+    with open(i_file) as f:
         i_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "taxonomy_results.json") as f:
+    with open(tax_file) as f:
         tax_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "variance_results.json") as f:
+    with open(var_file) as f:
         var_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "developmental_results.json") as f:
+    with open(dev_file) as f:
         dev_res = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "twin_results.json") as f:
+    with open(twin_file) as f:
         twin_res = json.load(f)
         
     # Distance dictionary for Table T2
@@ -222,8 +271,10 @@ def export_all_tables():
         a2 = float(pd.read_csv(s2_file, sep="\t")["age_acq_time"].iloc[0])
         gap_mo = (a2 - a1) * 12.0
         
-        ann1 = len(load_annotations(subj, "ses-1"))
-        ann2 = len(load_annotations(subj, "ses-2"))
+        ann1_df = load_annotations(subj, "ses-1")
+        ann2_df = load_annotations(subj, "ses-2")
+        ann1 = len(ann1_df) if ann1_df is not None else 0
+        ann2 = len(ann2_df) if ann2_df is not None else 0
         
         twin_str = "Twin A" if subj == "sub-NORB00086" else ("Twin B" if subj == "sub-NORB00087" else "Singleton")
         note = "Brother of 00087 (male twin)" if subj == "sub-NORB00086" else ("Brother of 00086 (male twin)" if subj == "sub-NORB00087" else ("Short gap: 4 days" if subj == "sub-NORB00064" else ""))
@@ -289,6 +340,7 @@ def export_all_tables():
     print("=" * 80)
     print("ALL TABLES T1 THROUGH T6 SUCCESSFULLY EXPORTED TO tables/ DIRECTORY!")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     export_all_tables()

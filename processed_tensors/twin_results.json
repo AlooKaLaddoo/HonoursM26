@@ -17,6 +17,8 @@
       "M_87_86": 0.6060432730973853,
       "rank_87_for_86": 14,
       "rank_86_for_87": 16,
+      "rank_87_in_col": 18,
+      "rank_86_in_col": 15,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -44,6 +46,8 @@
       "M_87_86": 0.21544645265974202,
       "rank_87_for_86": 7,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 15,
+      "rank_86_in_col": 9,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -68,6 +72,8 @@
       "M_87_86": 0.3105432301556021,
       "rank_87_for_86": 9,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 18,
+      "rank_86_in_col": 16,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -92,6 +98,8 @@
       "M_87_86": 0.8121946069690376,
       "rank_87_for_86": 16,
       "rank_86_for_87": 12,
+      "rank_87_in_col": 18,
+      "rank_86_in_col": 7,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -116,6 +124,8 @@
       "M_87_86": 0.41037721193631377,
       "rank_87_for_86": 15,
       "rank_86_for_87": 17,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 16,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -143,6 +153,8 @@
       "M_87_86": 0.7616531792416202,
       "rank_87_for_86": 18,
       "rank_86_for_87": 17,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 18,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -167,6 +179,8 @@
       "M_87_86": 0.6638579238626706,
       "rank_87_for_86": 18,
       "rank_86_for_87": 18,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 17,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -191,6 +205,8 @@
       "M_87_86": 0.8063147547830501,
       "rank_87_for_86": 9,
       "rank_86_for_87": 10,
+      "rank_87_in_col": 15,
+      "rank_86_in_col": 8,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -215,6 +231,8 @@
       "M_87_86": 0.8275422486623549,
       "rank_87_for_86": 10,
       "rank_86_for_87": 10,
+      "rank_87_in_col": 11,
+      "rank_86_in_col": 6,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -239,6 +257,8 @@
       "M_87_86": 0.47044762202205753,
       "rank_87_for_86": 10,
       "rank_86_for_87": 14,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 3,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -265,6 +285,8 @@
       "M_87_86": 0.22266634772485183,
       "rank_87_for_86": 17,
       "rank_86_for_87": 6,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 14,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -289,6 +311,8 @@
       "M_87_86": 0.18952400019244867,
       "rank_87_for_86": 17,
       "rank_86_for_87": 7,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 8,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -313,6 +337,8 @@
       "M_87_86": 0.6317448176300885,
       "rank_87_for_86": 12,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 3,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -337,6 +363,8 @@
       "M_87_86": 0.2527976559558837,
       "rank_87_for_86": 9,
       "rank_86_for_87": 18,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 6,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -361,6 +389,8 @@
       "M_87_86": 0.5136196832097542,
       "rank_87_for_86": 18,
       "rank_86_for_87": 17,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 12,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -385,6 +415,8 @@
       "M_87_86": 0.27974078770602445,
       "rank_87_for_86": 15,
       "rank_86_for_87": 17,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 9,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -409,6 +441,8 @@
       "M_87_86": 0.7540079891973687,
       "rank_87_for_86": 13,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 10,
+      "rank_86_in_col": 9,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -433,6 +467,8 @@
       "M_87_86": 0.33684547095280437,
       "rank_87_for_86": 8,
       "rank_86_for_87": 7,
+      "rank_87_in_col": 17,
+      "rank_86_in_col": 3,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -459,6 +495,8 @@
       "M_87_86": 0.6105234930908566,
       "rank_87_for_86": 14,
       "rank_86_for_87": 15,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 12,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -483,6 +521,8 @@
       "M_87_86": 0.46414561430047035,
       "rank_87_for_86": 5,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 19,
+      "rank_86_in_col": 4,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -507,6 +547,8 @@
       "M_87_86": 0.5937672436089667,
       "rank_87_for_86": 15,
       "rank_86_for_87": 12,
+      "rank_87_in_col": 16,
+      "rank_86_in_col": 17,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -533,6 +575,8 @@
       "M_87_86": 0.4223208601336645,
       "rank_87_for_86": 6,
       "rank_86_for_87": 12,
+      "rank_87_in_col": 14,
+      "rank_86_in_col": 16,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -557,6 +601,8 @@
       "M_87_86": 0.5988983951507583,
       "rank_87_for_86": 2,
       "rank_86_for_87": 9,
+      "rank_87_in_col": 4,
+      "rank_86_in_col": 12,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -585,6 +631,8 @@
       "M_87_86": 0.5189737889171196,
       "rank_87_for_86": 1,
       "rank_86_for_87": 2,
+      "rank_87_in_col": 4,
+      "rank_86_in_col": 6,
       "misidentified_86_as_87": true,
       "misidentified_87_as_86": false
     },
@@ -609,6 +657,8 @@
       "M_87_86": 0.6293752678784356,
       "rank_87_for_86": 3,
       "rank_86_for_87": 11,
+      "rank_87_in_col": 4,
+      "rank_86_in_col": 13,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },
@@ -635,6 +685,8 @@
       "M_87_86": 0.4857013076830439,
       "rank_87_for_86": 6,
       "rank_86_for_87": 17,
+      "rank_87_in_col": 16,
+      "rank_86_in_col": 10,
       "misidentified_86_as_87": false,
       "misidentified_87_as_86": false
     },

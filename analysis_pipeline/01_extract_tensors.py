@@ -6,21 +6,68 @@ Outputs:
   - processed_tensors/metadata.json
   - processed_tensors/README.md
 """
-import time
 import json
+import re
+import sys
+import time
+from pathlib import Path
+
+import mne
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from tqdm import tqdm
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    CORR_MATRICES_DIR, OUTPUT_TENSORS_DIR, FREQUENCY_BANDS, FEATURE_DEFS
-)
-from .utils import (
-    compute_all_broadband_features, extract_band_matrices,
-    extract_matrix_edge_vector
-)
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        BASE_DIR,
+        CHANNELS,
+        CORR_MATRICES_DIR,
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        FREQUENCY_BANDS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+    from analysis_pipeline.utils import (
+        compute_all_broadband_features,
+        extract_band_matrices,
+        extract_matrix_edge_vector,
+        load_annotations,
+    )
+else:
+    from .config import (
+        BASE_DIR,
+        CHANNELS,
+        CORR_MATRICES_DIR,
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        FREQUENCY_BANDS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+    from .utils import (
+        compute_all_broadband_features,
+        extract_band_matrices,
+        extract_matrix_edge_vector,
+        load_annotations,
+    )
+
+def _sort_segment_key(path: Path) -> int:
+    """Sort key extracting integer segment index for strict chronological ordering."""
+    match = re.search(r"segment-(\d+)", path.name)
+    return int(match.group(1)) if match else 0
 
 def run_extraction():
     start_time = time.time()
@@ -30,9 +77,21 @@ def run_extraction():
     n_ses = len(SESSIONS)
     n_epochs = N_EPOCHS
     
+    # Resolve correlation matrices directory (root or legacyCode fallback)
+    corr_dir = CORR_MATRICES_DIR
+    if not corr_dir.exists():
+        legacy_dir = BASE_DIR / "legacyCode" / "correlation_matrices_segment_wise_absolute"
+        if legacy_dir.exists():
+            corr_dir = legacy_dir
+        else:
+            raise FileNotFoundError(
+                f"Correlation matrices directory not found at '{CORR_MATRICES_DIR}' or '{legacy_dir}'"
+            )
+
     print("=" * 70)
     print("PHASE 1: FEATURE TENSOR EXTRACTION (STEP 1)")
     print(f"Cohort: {n_subs} infants | Sessions: {n_ses} | Epochs: {n_epochs}")
+    print(f"Correlation matrices source: {corr_dir}")
     print("=" * 70)
     
     # Initialize dictionary of tensors: shape (19, 2, 12, n)
@@ -42,20 +101,25 @@ def run_extraction():
         tensors[fid] = np.zeros((n_subs, n_ses, n_epochs, dim), dtype=np.float64)
         
     bookkeeping_tau = []
-    bookkeeping_density = []
     
     # -------------------------------------------------------------
     # 1. EXTRACT BROADBAND FEATURES (f01 - f18)
     # -------------------------------------------------------------
     print("\n[1/2] Extracting Broadband Network Features (f01 - f18)...")
+    broadband_fids = [fid for fid, meta in FEATURE_DEFS.items() if meta["band"] == "broadband"]
     
     for sub_idx, subj in enumerate(tqdm(SUBJECT_IDS, desc="Broadband subjects")):
         for ses_idx, ses in enumerate(SESSIONS):
-            subj_ses_dir = CORR_MATRICES_DIR / subj / ses
-            csv_files = sorted(subj_ses_dir.glob("*.csv"))
+            subj_ses_dir = corr_dir / subj / ses
+            if not subj_ses_dir.exists():
+                raise FileNotFoundError(f"Missing correlation matrices directory: {subj_ses_dir}")
+                
+            csv_files = sorted(subj_ses_dir.glob("*.csv"), key=_sort_segment_key)
             
             if len(csv_files) < n_epochs:
-                raise ValueError(f"Subject {subj} {ses} has only {len(csv_files)} correlation matrices (< {n_epochs})")
+                raise ValueError(
+                    f"Subject {subj} {ses} has only {len(csv_files)} correlation matrices (< {n_epochs}) in {subj_ses_dir}"
+                )
                 
             for ep_idx in range(n_epochs):
                 csv_path = csv_files[ep_idx]
@@ -63,9 +127,8 @@ def run_extraction():
                 
                 features = compute_all_broadband_features(df)
                 
-                # Assign to broadband tensors f01 to f18
-                for fid_num in range(1, 19):
-                    fid = f"f{fid_num:02d}"
+                # Assign to broadband tensors
+                for fid in broadband_fids:
                     tensors[fid][sub_idx, ses_idx, ep_idx, :] = features[fid]
                     
                 bookkeeping_tau.append({
@@ -85,15 +148,29 @@ def run_extraction():
         "beta":  ("f25", "f26")
     }
     
-    for band_name, (w_fid, b_fid) in band_feature_map.items():
-        l_freq, h_freq = FREQUENCY_BANDS[band_name]
-        print(f" -> Processing {band_name.upper()} band ({l_freq}-{h_freq} Hz)...")
-        
-        for sub_idx, subj in enumerate(tqdm(SUBJECT_IDS, desc=f"{band_name.capitalize()} band")):
-            for ses_idx, ses in enumerate(SESSIONS):
+    bookkeeping_bands = {b: [] for b in band_feature_map}
+    
+    # Iterate subjects and sessions on the outer loop to load raw EDF only once per recording (38 loads instead of 152)
+    for sub_idx, subj in enumerate(tqdm(SUBJECT_IDS, desc="Frequency band subjects")):
+        for ses_idx, ses in enumerate(SESSIONS):
+            edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
+            if not edf_path.exists():
+                raise FileNotFoundError(f"Missing EDF: {edf_path}")
+                
+            ann_df = load_annotations(subj, ses)
+            if ann_df is None:
+                raise FileNotFoundError(f"Missing annotations for {subj} {ses}")
+                
+            raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
+            raw.pick(CHANNELS)
+            
+            for band_name, (w_fid, b_fid) in band_feature_map.items():
+                l_freq, h_freq = FREQUENCY_BANDS[band_name]
+                
                 band_results = extract_band_matrices(
                     subject_id=subj, session_id=ses,
-                    l_freq=l_freq, h_freq=h_freq, n_epochs=n_epochs
+                    l_freq=l_freq, h_freq=h_freq, n_epochs=n_epochs,
+                    raw=raw, ann_df=ann_df
                 )
                 
                 for ep_idx, (corr_df, bin_df, thr, density) in enumerate(band_results):
@@ -103,11 +180,25 @@ def run_extraction():
                     tensors[w_fid][sub_idx, ses_idx, ep_idx, :] = w_vec
                     tensors[b_fid][sub_idx, ses_idx, ep_idx, :] = b_vec
                     
+                    bookkeeping_bands[band_name].append({
+                        "subject": subj, "session": ses, "epoch": ep_idx + 1,
+                        "tau_c": thr, "density": density
+                    })
+                    
     # -------------------------------------------------------------
-    # 3. SAVE TENSORS AND VERIFY
+    # 3. VALIDATE AND SAVE TENSORS
     # -------------------------------------------------------------
-    print("\n[3/3] Saving all 26 feature tensors to disk...")
+    print("\n[3/3] Validating and saving all 26 feature tensors to disk...")
     for fid, tensor in tensors.items():
+        expected_dim = FEATURE_DEFS[fid]["dim"]
+        expected_shape = (n_subs, n_ses, n_epochs, expected_dim)
+        if tensor.shape != expected_shape:
+            raise ValueError(f"Tensor {fid} shape mismatch: expected {expected_shape}, got {tensor.shape}")
+        if np.isnan(tensor).any():
+            raise ValueError(f"Tensor {fid} contains NaN values!")
+        if np.isinf(tensor).any():
+            raise ValueError(f"Tensor {fid} contains infinite values!")
+            
         out_file = OUTPUT_TENSORS_DIR / f"X_{fid}.npy"
         np.save(out_file, tensor)
         
@@ -134,6 +225,17 @@ def run_extraction():
             "median_density": float(np.median([x["density"] for x in bookkeeping_tau])),
             "min_density": float(np.min([x["density"] for x in bookkeeping_tau])),
             "max_density": float(np.max([x["density"] for x in bookkeeping_tau]))
+        },
+        "frequency_band_summaries": {
+            band: {
+                "mean_tau": float(np.mean([x["tau_c"] for x in records])),
+                "min_tau": float(np.min([x["tau_c"] for x in records])),
+                "max_tau": float(np.max([x["tau_c"] for x in records])),
+                "median_density": float(np.median([x["density"] for x in records])),
+                "min_density": float(np.min([x["density"] for x in records])),
+                "max_density": float(np.max([x["density"] for x in records]))
+            }
+            for band, records in bookkeeping_bands.items() if records
         }
     }
     with open(meta_path, "w") as f:
@@ -141,7 +243,7 @@ def run_extraction():
         
     # Save README
     readme_path = OUTPUT_TENSORS_DIR / "README.md"
-    readme_content = f"""# Processed Feature Tensors ($X_f$)
+    readme_content = """# Processed Feature Tensors ($X_f$)
 
 This directory contains the 26 standardized feature tensors constructed for the infant EEG universality and individuality study.
 
@@ -170,7 +272,8 @@ $$(19, 2, 12, n)$$
     print(f"Broadband GCC Threshold tau_c: mean = {metadata['tau_density_summary']['mean_tau']:.3f}, range = [{metadata['tau_density_summary']['min_tau']}, {metadata['tau_density_summary']['max_tau']}]")
     print(f"Broadband GCC Edge Density m: median = {metadata['tau_density_summary']['median_density']:.0f}, range = [{metadata['tau_density_summary']['min_density']}, {metadata['tau_density_summary']['max_density']}]")
     print("=" * 70)
+    
+    return tensors, metadata
 
 if __name__ == "__main__":
     run_extraction()
-

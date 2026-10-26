@@ -13,27 +13,65 @@ Re-evaluates main metrics across all 9 distinct sensitivity checks specified in 
 Outputs Table T4 (CSV) and JSON database.
 """
 import json
+import sys
+from itertools import combinations
+from pathlib import Path
+
 import mne
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from itertools import combinations
-from scipy import stats, signal
+from scipy import signal
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    FEATURE_DEFS, OUTPUT_TENSORS_DIR, TABLES_DIR, DATASET_PATH
-)
-from .utils import load_annotations, segment_eeg_from_annotations, recording_S
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+        TABLES_DIR,
+    )
+    from analysis_pipeline.utils import (
+        load_annotations,
+        recording_S,
+        segment_eeg_from_annotations,
+    )
+else:
+    from .config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+        TABLES_DIR,
+    )
+    from .utils import (
+        load_annotations,
+        recording_S,
+        segment_eeg_from_annotations,
+    )
+
 
 def get_electrode_3d_distances():
     """Load 3D Cartesian coordinates for standard electrodes and compute 171 pairwise Euclidean distances."""
     elec_path = DATASET_PATH / "sub-NORB00001" / "ses-1" / "eeg" / "sub-NORB00001_ses-1_electrodes.tsv"
+    if not elec_path.exists():
+        raise FileNotFoundError(f"Electrode coordinates file not found: {elec_path}")
     df = pd.read_csv(elec_path, sep="\t")
-    coords = {}
-    for _, row in df.iterrows():
-        if row["name"] in NODE_LABELS:
-            coords[row["name"]] = np.array([float(row["x"]), float(row["y"]), float(row["z"])])
+    coords: dict[str, np.ndarray] = {}
+    for name, x, y, z in zip(df["name"], df["x"], df["y"], df["z"]):
+        if str(name) in NODE_LABELS:
+            coords[str(name)] = np.array([float(x), float(y), float(z)])
             
     distances = []
     for edge in EDGE_LABELS:
@@ -41,6 +79,7 @@ def get_electrode_3d_distances():
         d = float(np.linalg.norm(coords[u] - coords[v]))
         distances.append(d)
     return np.array(distances, dtype=np.float64)
+
 
 def run_robustness_checks():
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,13 +89,17 @@ def run_robustness_checks():
     print("=" * 80)
     
     # Load primary baseline results
-    with open(OUTPUT_TENSORS_DIR / "universality_results.json") as f:
+    u_file = OUTPUT_TENSORS_DIR / "universality_results.json"
+    i_file = OUTPUT_TENSORS_DIR / "identifiability_results.json"
+    if not u_file.exists() or not i_file.exists():
+        raise FileNotFoundError("Prerequisite baseline results missing. Please run Phases 2 and 4 first.")
+        
+    with open(u_file) as f:
         u_base = json.load(f)
-    with open(OUTPUT_TENSORS_DIR / "identifiability_results.json") as f:
+    with open(i_file) as f:
         i_base = json.load(f)
         
     t4_rows = []
-    results_dict = {}
     pairs_19 = list(combinations(range(len(SUBJECT_IDS)), 2))
     diag_19 = np.eye(len(SUBJECT_IDS), dtype=bool)
     
@@ -110,8 +153,8 @@ def run_robustness_checks():
         for a, b in pairs_19:
             xa, xb = X[a, 0, :, :], X[b, 0, :, :]
             epoch_s = []
-            for k1 in range(12):
-                for k2 in range(12):
+            for k1 in range(N_EPOCHS):
+                for k2 in range(N_EPOCHS):
                     num = np.sum(np.minimum(xa[k1], xb[k2]))
                     den = np.sum(np.maximum(xa[k1], xb[k2]))
                     epoch_s.append(num / den if den > 0 else 0.0)
@@ -124,8 +167,8 @@ def run_robustness_checks():
             for b in range(19):
                 xa, xb = X[a, 0, :, :], X[b, 1, :, :]
                 epoch_s = []
-                for k1 in range(12):
-                    for k2 in range(12):
+                for k1 in range(N_EPOCHS):
+                    for k2 in range(N_EPOCHS):
                         num = np.sum(np.minimum(xa[k1], xb[k2]))
                         den = np.sum(np.maximum(xa[k1], xb[k2]))
                         epoch_s.append(num / den if den > 0 else 0.0)
@@ -185,10 +228,6 @@ def run_robustness_checks():
         i_others_k6 = float((np.sum(M_k6) - np.sum(np.diag(M_k6))) / (19 * 18))
         idiff_k6 = float((i_self_k6 - i_others_k6) * 100.0)
         
-        # 1-NN Accuracy
-        row_max = np.argmax(M_k6, axis=1)
-        acc_k6 = float(np.mean(row_max == np.arange(19)) * 100.0)
-        
         base_u1 = u_base[fid]["ses-1"]["U_global"]
         base_idiff = i_base[fid]["I_diff"]
         
@@ -240,10 +279,6 @@ def run_robustness_checks():
         i_self_n17 = float(np.mean(np.diag(M_sub)))
         i_others_n17 = float((np.sum(M_sub) - np.sum(np.diag(M_sub))) / (n_sub17 * (n_sub17 - 1)))
         idiff_n17 = float((i_self_n17 - i_others_n17) * 100.0)
-        
-        # 1-NN Accuracy
-        row_max = np.argmax(M_sub, axis=1)
-        acc_n17 = float(np.mean(row_max == np.arange(n_sub17)) * 100.0)
         
         base_u1 = u_base[fid]["ses-1"]["U_global"]
         base_idiff = i_base[fid]["I_diff"]
@@ -336,9 +371,11 @@ def run_robustness_checks():
         for ses_idx, ses in enumerate(SESSIONS):
             edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
             ann_df = load_annotations(subj, ses)
+            if ann_df is None:
+                continue
             raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
             raw.pick(NODE_LABELS)
-            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:12]
+            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
             
             for ep_idx, seg in enumerate(segments):
                 seg_avg = seg - np.mean(seg, axis=0, keepdims=True)
@@ -351,7 +388,6 @@ def run_robustness_checks():
         for b in range(19):
             M_avg[a, b] = recording_S(X_avg[a, 0], X_avg[b, 1])
     idiff_avg = float((np.mean(np.diag(M_avg)) - np.mean(M_avg[~diag_19])) * 100.0)
-    acc_avg = float(np.mean(np.argmax(M_avg, axis=1) == np.arange(19)) * 100.0)
     
     base_u1 = u_base["f01"]["ses-1"]["U_global"]
     base_idiff = i_base["f01"]["I_diff"]
@@ -391,12 +427,14 @@ def run_robustness_checks():
         for ses_idx, ses in enumerate(SESSIONS):
             edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
             ann_df = load_annotations(subj, ses)
+            if ann_df is None:
+                continue
             raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
             raw.pick(NODE_LABELS)
-            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:12]
+            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
             
             for ep_idx, seg in enumerate(segments):
-                analytic = signal.hilbert(seg, axis=1)
+                analytic: np.ndarray = np.asarray(signal.hilbert(seg, axis=1))
                 zx = analytic[p_triu, :]
                 zy = analytic[q_triu, :]
                 cross = zx * np.conj(zy)
@@ -452,7 +490,7 @@ def run_robustness_checks():
     
     for sub in range(19):
         for ses in range(2):
-            for ep in range(12):
+            for ep in range(N_EPOCHS):
                 vec = X_f01[sub, ses, ep, :]
                 thr = np.partition(vec, -m_edges)[-m_edges]
                 X_topm[sub, ses, ep, :] = (vec >= thr).astype(float)
@@ -506,9 +544,11 @@ def run_robustness_checks():
         
         for sub in range(19):
             for ses in range(2):
-                for ep in range(12):
+                for ep in range(N_EPOCHS):
                     vec = X[sub, ses, ep, :]
-                    slope, intercept, _, _, _ = stats.linregress(distances, vec)
+                    poly_res = np.polyfit(distances, vec, 1)
+                    slope = float(poly_res[0])
+                    intercept = float(poly_res[1])
                     resid = vec - (intercept + slope * distances)
                     X_adj[sub, ses, ep, :] = resid - resid.min() + 0.01
                     
@@ -563,6 +603,7 @@ def run_robustness_checks():
     print(f"JSON saved to: {out_json}")
     print("=" * 80)
     return df_t4
+
 
 if __name__ == "__main__":
     run_robustness_checks()

@@ -7,20 +7,44 @@ Computes:
   - Age-adjusted variance decomposition.
 Outputs Table T2 elements and Table T3 variance partitions.
 """
+import concurrent.futures
 import json
+import sys
 import warnings
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from scipy import stats
 import statsmodels.formula.api as smf
-import concurrent.futures
+from scipy import stats
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    NODE_REGIONS, REGION_PAIRS, FEATURE_DEFS, OUTPUT_TENSORS_DIR,
-    DATASET_PATH
-)
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+else:
+    from .config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        N_EPOCHS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+
 
 def rank_inverse_normal(values: np.ndarray) -> np.ndarray:
     """Rank-based inverse-normal transformation (Step 5b item 1)."""
@@ -30,7 +54,6 @@ def rank_inverse_normal(values: np.ndarray) -> np.ndarray:
     transformed = stats.norm.ppf(prob)
     return transformed
 
-from .utils import get_node_hemisphere, get_edge_hemisphere_pair
 
 def load_exact_ages():
     """Load exact infant ages (in years and days) for ses-1 and ses-2."""
@@ -47,12 +70,13 @@ def load_exact_ages():
                 ages[subj][ses] = np.nan
     return ages
 
+
 def fit_element_lmm(args):
     """
     Worker for fitting Model 1 (unadjusted) and Model 2 (age-adjusted) Linear Mixed-Effects Models
     on rank-based inverse-normal transformed element observations.
     """
-    e, raw_vals, base_records, label = args
+    _e, raw_vals, base_records, label = args
     warnings.filterwarnings("ignore")
     
     # Check for zero variance or constant raw values
@@ -64,10 +88,7 @@ def fit_element_lmm(args):
             "converged": False, "skipped": False
         }
         
-    ranks = stats.rankdata(raw_vals, method="average")
-    n = len(raw_vals)
-    prob = (ranks - 0.5) / n
-    y_trans = stats.norm.ppf(prob)
+    y_trans = rank_inverse_normal(raw_vals)
     
     df_e = pd.DataFrame(base_records)
     df_e["y"] = y_trans
@@ -84,7 +105,7 @@ def fit_element_lmm(args):
         p_session = var_session / total_var if total_var > 0 else 0.0
         p_epoch = var_epoch / total_var if total_var > 0 else 0.0
         conv1 = bool(r1.converged)
-    except Exception:
+    except (np.linalg.LinAlgError, ValueError, IndexError, KeyError, ZeroDivisionError):
         p_infant, p_session, p_epoch, conv1 = np.nan, np.nan, np.nan, False
         
     # Model 2: Age-adjusted: y ~ age_c
@@ -99,7 +120,7 @@ def fit_element_lmm(args):
         p_session_a = var_session_a / total_var_a if total_var_a > 0 else 0.0
         p_epoch_a = var_epoch_a / total_var_a if total_var_a > 0 else 0.0
         conv2 = bool(r2.converged)
-    except Exception:
+    except (np.linalg.LinAlgError, ValueError, IndexError, KeyError, ZeroDivisionError):
         p_infant_a, p_session_a, p_epoch_a, conv2 = np.nan, np.nan, np.nan, False
         
     return {
@@ -113,6 +134,7 @@ def fit_element_lmm(args):
         "converged": bool(conv1 and conv2),
         "skipped": False
     }
+
 
 def run_taxonomy_and_variance(max_workers: int = 8):
     print("=" * 80)
@@ -138,8 +160,8 @@ def run_taxonomy_and_variance(max_workers: int = 8):
     
     # Pre-build base observation records
     base_records = []
-    for sub_idx, subj in enumerate(SUBJECT_IDS):
-        for ses_idx, ses in enumerate(SESSIONS):
+    for subj in SUBJECT_IDS:
+        for ses in SESSIONS:
             age_val = ages_dict[subj][ses]
             age_c = age_val - mean_sample_age
             for ep_idx in range(N_EPOCHS):
@@ -185,10 +207,10 @@ def run_taxonomy_and_variance(max_workers: int = 8):
                 tax_classes.append("Neither")
                 
         class_counts = {
-            "Universal": int(np.sum([c == "Universal" for c in tax_classes])),
-            "Individual": int(np.sum([c == "Individual" for c in tax_classes])),
-            "Universal and Individual": int(np.sum([c == "Universal and Individual" for c in tax_classes])),
-            "Neither": int(np.sum([c == "Neither" for c in tax_classes]))
+            "Universal": tax_classes.count("Universal"),
+            "Individual": tax_classes.count("Individual"),
+            "Universal and Individual": tax_classes.count("Universal and Individual"),
+            "Neither": tax_classes.count("Neither")
         }
         
         taxonomy_results[fid] = {
@@ -200,7 +222,12 @@ def run_taxonomy_and_variance(max_workers: int = 8):
         # -------------------------------------------------------------
         # 5b. VARIANCE DECOMPOSITION (LINEAR MIXED-EFFECTS MODELS)
         # -------------------------------------------------------------
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy") # (19, 2, 12, dim)
+        tensor_path = OUTPUT_TENSORS_DIR / f"X_{fid}.npy"
+        if not tensor_path.exists():
+            raise FileNotFoundError(
+                f"Feature tensor not found: {tensor_path}. Run 01_extract_tensors.py first."
+            )
+        X = np.load(tensor_path) # (19, 2, 12, dim)
         
         if is_binary_adj:
             # Skip binary adjacency per Step 5b item 1 (0/1 values)
@@ -256,6 +283,7 @@ def run_taxonomy_and_variance(max_workers: int = 8):
     print(f"Variance: {var_file}")
     print("=" * 80)
     return taxonomy_results, variance_results
+
 
 if __name__ == "__main__":
     run_taxonomy_and_variance()

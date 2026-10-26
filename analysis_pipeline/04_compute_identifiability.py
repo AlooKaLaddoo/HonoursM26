@@ -12,15 +12,31 @@ Computes:
 Saves M matrices as .npy and summary JSON.
 """
 import json
-import numpy as np
+import sys
 from pathlib import Path
+
+import numpy as np
 from statsmodels.stats.multitest import multipletests
 
-from .config import (
-    SUBJECT_IDS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    FEATURE_DEFS, OUTPUT_TENSORS_DIR
-)
-from .utils import element_J, recording_S
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        FEATURE_DEFS,
+        OUTPUT_TENSORS_DIR,
+        SUBJECT_IDS,
+    )
+    from analysis_pipeline.utils import element_J, recording_S
+else:
+    from .config import (
+        FEATURE_DEFS,
+        OUTPUT_TENSORS_DIR,
+        SUBJECT_IDS,
+    )
+    from .utils import element_J, recording_S
+
 
 def infant_identifiability_bootstrap(M: np.ndarray, B: int = 10000, seed: int = 42):
     """
@@ -58,10 +74,10 @@ def infant_identifiability_bootstrap(M: np.ndarray, B: int = 10000, seed: int = 
         "idiff_boot_sd": float(np.std(boot_diff))
     }
 
+
 def run_identifiability(n_permutations: int = 10000, seed: int = 42):
     rng = np.random.default_rng(seed)
     n_subs = len(SUBJECT_IDS)
-    n_off = n_subs * (n_subs - 1) # 342
     
     print("=" * 80)
     print("PHASE 4: LONGITUDINAL IDENTIFIABILITY & FINGERPRINTING (STEP 4)")
@@ -76,6 +92,10 @@ def run_identifiability(n_permutations: int = 10000, seed: int = 42):
         ftype = meta["type"]
         
         tensor_path = OUTPUT_TENSORS_DIR / f"X_{fid}.npy"
+        if not tensor_path.exists():
+            raise FileNotFoundError(
+                f"Feature tensor not found: {tensor_path}. Run 01_extract_tensors.py first."
+            )
         X = np.load(tensor_path) # (19, 2, 12, dim)
         
         # 1. Construct 19x19 Identifiability Matrix M and element tensor M_elem (19, 19, dim)
@@ -235,6 +255,6 @@ def run_identifiability(n_permutations: int = 10000, seed: int = 42):
     print("=" * 80)
     return results
 
+
 if __name__ == "__main__":
     run_identifiability()
-

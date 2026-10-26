@@ -11,15 +11,38 @@ Computes:
     * Shared elements exceeding 95th percentile of non-sibling pairs
 """
 import json
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from scipy import stats
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, NODE_LABELS, EDGE_LABELS,
-    FEATURE_DEFS, OUTPUT_TENSORS_DIR, DATASET_PATH
-)
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+else:
+    from .config import (
+        DATASET_PATH,
+        EDGE_LABELS,
+        FEATURE_DEFS,
+        NODE_LABELS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+
 
 def load_exact_subject_ages():
     """Load exact infant ages (years and days) at ses-1 and ses-2."""
@@ -37,6 +60,7 @@ def load_exact_subject_ages():
                 ages_yr[subj][ses] = np.nan
                 ages_days[subj][ses] = np.nan
     return ages_yr, ages_days
+
 
 def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 10000, seed: int = 42):
     """
@@ -70,6 +94,7 @@ def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 1000
     p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho))) / (1.0 + n_permutations))
     return obs_rho, p_two_sided
 
+
 def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 10000, seed: int = 42):
     """
     Spearman rank correlation with 10,000 permutations of vector y (Step 6.2).
@@ -90,12 +115,13 @@ def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 10000, see
     p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho))) / (1.0 + n_permutations))
     return obs_rho, p_two_sided
 
+
 def run_developmental_and_twins(n_permutations: int = 10000):
     print("=" * 80)
     print("PHASE 6: DEVELOPMENTAL ANALYSES & TWIN/SIBLING AUDIT (STEP 6)")
     print("=" * 80)
     
-    ages_yr, ages_days = load_exact_subject_ages()
+    _ages_yr, ages_days = load_exact_subject_ages()
     n_subs = len(SUBJECT_IDS)
     p_triu, q_triu = np.triu_indices(n_subs, k=1)
     
@@ -118,7 +144,10 @@ def run_developmental_and_twins(n_permutations: int = 10000):
     idx_69 = SUBJECT_IDS.index("sub-NORB00069")
     
     # Load Universality results for developmental shift delta_U
-    with open(OUTPUT_TENSORS_DIR / "universality_results.json") as f:
+    u_file = OUTPUT_TENSORS_DIR / "universality_results.json"
+    if not u_file.exists():
+        raise FileNotFoundError(f"Prerequisite file not found: {u_file}. Run Phase 2 first.")
+    with open(u_file) as f:
         u_results = json.load(f)
         
     dev_results = {}
@@ -131,12 +160,22 @@ def run_developmental_and_twins(n_permutations: int = 10000):
         labels = NODE_LABELS if ftype == "node" else EDGE_LABELS
         
         # Load matrices
-        S1 = np.load(OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-1.npy")
-        S2 = np.load(OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-2.npy")
-        M = np.load(OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy")
-        M_elem = np.load(OUTPUT_TENSORS_DIR / f"M_elem_{fid}.npy")
-        J1_pairs = np.load(OUTPUT_TENSORS_DIR / f"J_pair_{fid}_ses-1.npy")
-        J2_pairs = np.load(OUTPUT_TENSORS_DIR / f"J_pair_{fid}_ses-2.npy")
+        s1_path = OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-1.npy"
+        s2_path = OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-2.npy"
+        m_path = OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy"
+        j1_path = OUTPUT_TENSORS_DIR / f"J_pair_{fid}_ses-1.npy"
+        j2_path = OUTPUT_TENSORS_DIR / f"J_pair_{fid}_ses-2.npy"
+        
+        if not s1_path.exists():
+            raise FileNotFoundError(
+                f"Prerequisite matrix not found: {s1_path}. Run Phase 2 and Phase 4 first."
+            )
+        
+        S1 = np.load(s1_path)
+        S2 = np.load(s2_path)
+        M = np.load(m_path)
+        J1_pairs = np.load(j1_path)
+        J2_pairs = np.load(j2_path)
         
         # 1. Mantel test per session
         rho_m1, p_m1 = mantel_test(S1, D_mats["ses-1"], n_permutations=n_permutations, seed=101 + fid_idx)
@@ -264,9 +303,8 @@ def run_developmental_and_twins(n_permutations: int = 10000):
         for e in range(dim):
             v1, v2 = j1_twin[e], j2_twin[e]
             t1, t2 = j1_nontwin_p95[e], j2_nontwin_p95[e]
-            if not (np.isnan(v1) or np.isnan(v2) or np.isnan(t1) or np.isnan(t2)):
-                if v1 > t1 and v2 > t2:
-                    shared_elements.append(labels[e])
+            if not (np.isnan(v1) or np.isnan(v2) or np.isnan(t1) or np.isnan(t2)) and v1 > t1 and v2 > t2:
+                shared_elements.append(labels[e])
         
         twin_results[fid] = {
             "fid": fid, "name": fname,
@@ -283,6 +321,8 @@ def run_developmental_and_twins(n_permutations: int = 10000):
                 "M_86_87": m_86_87, "M_87_86": m_87_86,
                 "rank_87_for_86": rank_86_in_row,
                 "rank_86_for_87": rank_87_in_row,
+                "rank_87_in_col": rank_87_in_col,
+                "rank_86_in_col": rank_86_in_col,
                 "misidentified_86_as_87": misidentified_86_as_87,
                 "misidentified_87_as_86": misidentified_87_as_86
             },
@@ -305,6 +345,6 @@ def run_developmental_and_twins(n_permutations: int = 10000):
     print(f"Twin (Table T6): {out_twin}")
     print("=" * 80)
 
+
 if __name__ == "__main__":
     run_developmental_and_twins()
-

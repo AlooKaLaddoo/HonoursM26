@@ -9,6 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATASET_PATH = BASE_DIR / "Infants_data"
 DERIVATIVES_PATH = DATASET_PATH / "derivatives" / "NeuronicEEG"
 CORR_MATRICES_DIR = BASE_DIR / "correlation_matrices_segment_wise_absolute"
+if not CORR_MATRICES_DIR.exists() and (BASE_DIR / "legacyCode" / "correlation_matrices_segment_wise_absolute").exists():
+    CORR_MATRICES_DIR = BASE_DIR / "legacyCode" / "correlation_matrices_segment_wise_absolute"
 OUTPUT_TENSORS_DIR = BASE_DIR / "processed_tensors"
 TABLES_DIR = BASE_DIR / "tables"
 FIGURES_DIR = BASE_DIR / "figures"
@@ -119,4 +121,3 @@ FEATURE_DEFS = {
     "f25": {"name": "beta_weighted_correlation", "type": "edge", "dim": 171, "network": "weighted", "band": "beta"},
     "f26": {"name": "beta_binary_adjacency", "type": "edge", "dim": 171, "network": "binary", "band": "beta"}
 }
-

@@ -9,14 +9,33 @@ Computes:
   - Infant-level bootstrap 95% Confidence Intervals (10,000 resamples)
 """
 import json
-import numpy as np
+import sys
 from pathlib import Path
 
-from .config import (
-    SUBJECT_IDS, SESSIONS, N_EPOCHS, NODE_LABELS, EDGE_LABELS,
-    FEATURE_DEFS, OUTPUT_TENSORS_DIR
-)
-from .utils import element_J, recording_S
+import numpy as np
+
+# Support both direct script execution and package imports
+if __package__ is None or __package__ == "":
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from analysis_pipeline.config import (
+        FEATURE_DEFS,
+        N_EPOCHS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+    from analysis_pipeline.utils import element_J, recording_S
+else:
+    from .config import (
+        FEATURE_DEFS,
+        N_EPOCHS,
+        OUTPUT_TENSORS_DIR,
+        SESSIONS,
+        SUBJECT_IDS,
+    )
+    from .utils import element_J, recording_S
 
 def infant_value_bootstrap(values: np.ndarray, B: int = 10000, seed: int = 42):
     """Infant-level ordinary bootstrap for infant-level metrics (Step 7.2 item 2)."""
@@ -51,6 +70,8 @@ def run_within_session():
         ftype = meta["type"]
         
         tensor_path = OUTPUT_TENSORS_DIR / f"X_{fid}.npy"
+        if not tensor_path.exists():
+            raise FileNotFoundError(f"Feature tensor not found: {tensor_path}. Run Phase 1 first.")
         X = np.load(tensor_path) # (19, 2, 12, dim)
         
         feat_res = {
@@ -145,4 +166,3 @@ def run_within_session():
 
 if __name__ == "__main__":
     run_within_session()
-
