@@ -417,5 +417,39 @@
     "median_density": 58.0,
     "min_density": 27.0,
     "max_density": 145.0
+  },
+  "frequency_band_summaries": {
+    "delta": {
+      "mean_tau": 0.5541666666666667,
+      "min_tau": 0.2,
+      "max_tau": 0.9,
+      "median_density": 59.0,
+      "min_density": 28.0,
+      "max_density": 137.0
+    },
+    "theta": {
+      "mean_tau": 0.5333333333333333,
+      "min_tau": 0.25,
+      "max_tau": 0.8,
+      "median_density": 57.0,
+      "min_density": 27.0,
+      "max_density": 152.0
+    },
+    "alpha": {
+      "mean_tau": 0.4891447368421053,
+      "min_tau": 0.2,
+      "max_tau": 0.8,
+      "median_density": 49.0,
+      "min_density": 26.0,
+      "max_density": 140.0
+    },
+    "beta": {
+      "mean_tau": 0.49506578947368424,
+      "min_tau": 0.15,
+      "max_tau": 0.8,
+      "median_density": 50.0,
+      "min_density": 27.0,
+      "max_density": 154.0
+    }
   }
 }

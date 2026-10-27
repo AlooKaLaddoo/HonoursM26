@@ -131,7 +131,7 @@ def extract_matrix_edge_vector(df: pd.DataFrame) -> np.ndarray:
     vec = []
     for label in EDGE_LABELS:
         u, v = label.split("-")
-        vec.append(float(df.loc[u, v]))
+        vec.append(df.loc[u, v])
     return np.array(vec, dtype=np.float64)
 
 
@@ -143,6 +143,8 @@ def compute_all_broadband_features(df: pd.DataFrame) -> dict:
     """
     # 1. Weighted Graph: directly from df (matching weighted/*.ipynb)
     G_w = nx.from_pandas_adjacency(df)
+    # Drop self-loops from the 1.0 diagonal; networkx counts each twice in degree, inflating strength by 2
+    G_w.remove_edges_from(list(nx.selfloop_edges(G_w)))
     for _u, _v, d in G_w.edges(data=True):
         w = d.get("weight", 0.0)
         d["distance"] = 1.0 / w if w > 0 else np.inf

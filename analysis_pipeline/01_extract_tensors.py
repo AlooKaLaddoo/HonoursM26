@@ -4,7 +4,6 @@ Extracts all 26 feature sets for N = 19 infants across 2 sessions and K = 12 epo
 Outputs:
   - processed_tensors/X_f01.npy ... X_f26.npy  (shape: 19 x 2 x 12 x n)
   - processed_tensors/metadata.json
-  - processed_tensors/README.md
 """
 import json
 import re
@@ -240,30 +239,6 @@ def run_extraction():
     }
     with open(meta_path, "w") as f:
         json.dump(metadata, f, indent=2)
-        
-    # Save README
-    readme_path = OUTPUT_TENSORS_DIR / "README.md"
-    readme_content = """# Processed Feature Tensors ($X_f$)
-
-This directory contains the 26 standardized feature tensors constructed for the infant EEG universality and individuality study.
-
-## Cohort & Tensor Shape
-Each tensor has exact shape:
-$$(19, 2, 12, n)$$
-* **Axis 0 (Infants, $N=19$):** Fixed sorted alphanumeric order from `sub-NORB00064` to `sub-NORB00103`.
-* **Axis 1 (Sessions, $S=2$):** `0: ses-1`, `1: ses-2`.
-* **Axis 2 (Epochs, $K=12$):** Chronological artifact-free segments (1 to 12).
-* **Axis 3 (Elements, $n$):** $n = 19$ for node features; $n = 171$ for edge features.
-
-## Files
-| Tensor File | Feature Name | Representation | Type | Dimension |
-| :--- | :--- | :--- | :--- | :---: |
-"""
-    for fid, meta in FEATURE_DEFS.items():
-        readme_content += f"| `X_{fid}.npy` | `{meta['name']}` | {meta['network'].capitalize()} | {meta['type'].capitalize()} | {meta['dim']} |\n"
-        
-    with open(readme_path, "w") as f:
-        f.write(readme_content)
         
     elapsed = time.time() - start_time
     print("=" * 70)

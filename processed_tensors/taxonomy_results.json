@@ -4,10 +4,10 @@
     "name": "broadband_weighted_correlation",
     "dim": 171,
     "counts": {
-      "Universal": 141,
+      "Universal": 142,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 30
+      "Neither": 29
     },
     "classes": [
       "Universal",
@@ -89,7 +89,7 @@
       "Universal",
       "Universal",
       "Neither",
-      "Neither",
+      "Universal",
       "Neither",
       "Neither",
       "Neither",
@@ -404,10 +404,10 @@
     "name": "broadband_weighted_node_strength",
     "dim": 19,
     "counts": {
-      "Universal": 14,
+      "Universal": 16,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 5
+      "Neither": 3
     },
     "classes": [
       "Universal",
@@ -419,14 +419,14 @@
       "Universal",
       "Universal",
       "Neither",
-      "Neither",
+      "Universal",
       "Neither",
       "Neither",
       "Universal",
       "Universal",
       "Universal",
       "Universal",
-      "Neither",
+      "Universal",
       "Universal",
       "Universal"
     ]
@@ -436,10 +436,10 @@
     "name": "broadband_weighted_edge_strength",
     "dim": 171,
     "counts": {
-      "Universal": 136,
+      "Universal": 131,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 35
+      "Neither": 40
     },
     "classes": [
       "Universal",
@@ -527,24 +527,17 @@
       "Universal",
       "Neither",
       "Universal",
-      "Universal",
+      "Neither",
       "Universal",
       "Universal",
       "Neither",
       "Neither",
       "Neither",
       "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
-      "Universal",
       "Neither",
+      "Universal",
+      "Universal",
+      "Universal",
       "Universal",
       "Universal",
       "Universal",
@@ -560,6 +553,13 @@
       "Universal",
       "Neither",
       "Universal",
+      "Neither",
+      "Neither",
+      "Universal",
+      "Universal",
+      "Universal",
+      "Neither",
+      "Universal",
       "Universal",
       "Universal",
       "Universal",
@@ -584,7 +584,7 @@
       "Universal",
       "Universal",
       "Universal",
-      "Universal",
+      "Neither",
       "Universal",
       "Neither",
       "Universal",
@@ -652,10 +652,10 @@
     "name": "broadband_weighted_edge_eigenvector",
     "dim": 171,
     "counts": {
-      "Universal": 150,
+      "Universal": 149,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 21
+      "Neither": 22
     },
     "classes": [
       "Universal",
@@ -789,7 +789,7 @@
       "Universal",
       "Universal",
       "Universal",
-      "Universal",
+      "Neither",
       "Neither",
       "Universal",
       "Universal",
@@ -1268,10 +1268,10 @@
     "name": "broadband_binary_edge_betweenness",
     "dim": 171,
     "counts": {
-      "Universal": 50,
+      "Universal": 51,
       "Individual": 0,
       "Universal and Individual": 2,
-      "Neither": 119
+      "Neither": 118
     },
     "classes": [
       "Universal",
@@ -1304,7 +1304,7 @@
       "Neither",
       "Neither",
       "Neither",
-      "Neither",
+      "Universal",
       "Universal",
       "Universal",
       "Universal",
@@ -1916,10 +1916,10 @@
     "name": "broadband_binary_edge_closeness",
     "dim": 171,
     "counts": {
-      "Universal": 52,
+      "Universal": 53,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 119
+      "Neither": 118
     },
     "classes": [
       "Universal",
@@ -1952,7 +1952,7 @@
       "Neither",
       "Neither",
       "Neither",
-      "Neither",
+      "Universal",
       "Universal",
       "Universal",
       "Universal",
@@ -2468,10 +2468,10 @@
     "name": "theta_weighted_correlation",
     "dim": 171,
     "counts": {
-      "Universal": 137,
+      "Universal": 138,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 34
+      "Neither": 33
     },
     "classes": [
       "Universal",
@@ -2546,7 +2546,7 @@
       "Universal",
       "Neither",
       "Universal",
-      "Neither",
+      "Universal",
       "Universal",
       "Universal",
       "Universal",
@@ -2652,10 +2652,10 @@
     "name": "theta_binary_adjacency",
     "dim": 171,
     "counts": {
-      "Universal": 43,
+      "Universal": 42,
       "Individual": 0,
       "Universal and Individual": 0,
-      "Neither": 128
+      "Neither": 129
     },
     "classes": [
       "Universal",
@@ -2797,7 +2797,7 @@
       "Neither",
       "Neither",
       "Neither",
-      "Universal",
+      "Neither",
       "Neither",
       "Neither",
       "Neither",

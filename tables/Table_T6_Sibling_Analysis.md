@@ -3,10 +3,10 @@
 | f01 | broadband_weighted_correlation | 0.5754 | 0.6402 | 12.9 | 26.3 | 11.8 | 20.6 | 12.8 | 24.3 | 0.603 | 0.6616 | 0.581 | 0.606 | 14 | 16 | None | 2 | F4-T5, Fp2-P3 |
 | f02 | broadband_weighted_node_betweenness | 0.2509 | 0.2181 | 91.8 | 66.1 | 91.2 | 47.1 | 92.3 | 67.6 | 0.1779 | 0.2402 | 0.2024 | 0.2154 | 7 | 9 | None | 0 | None |
 | f03 | broadband_weighted_edge_betweenness | 0.2836 | 0.3376 | 22.8 | 24.0 | 32.4 | 14.7 | 25.6 | 24.3 | 0.2899 | 0.317 | 0.2899 | 0.3105 | 9 | 9 | None | 0 | None |
-| f04 | broadband_weighted_node_strength | 0.8213 | 0.8148 | 65.5 | 44.4 | 52.9 | 35.3 | 62.8 | 43.2 | 0.8029 | 0.8436 | 0.7844 | 0.8122 | 16 | 12 | None | 0 | None |
-| f05 | broadband_weighted_edge_strength | 0.4289 | 0.4363 | 39.8 | 21.1 | 44.1 | 20.6 | 41.0 | 16.2 | 0.4224 | 0.5011 | 0.3919 | 0.4104 | 15 | 17 | None | 2 | F7-C3, T6-O1 |
-| f06 | broadband_weighted_node_eigenvector | 0.6977 | 0.7814 | 2.9 | 3.5 | 8.8 | 5.9 | 5.1 | 2.7 | 0.7857 | 0.8279 | 0.7022 | 0.7617 | 18 | 17 | None | 0 | None |
-| f07 | broadband_weighted_edge_eigenvector | 0.6206 | 0.7001 | 2.9 | 4.7 | 8.8 | 5.9 | 5.1 | 8.1 | 0.6926 | 0.7526 | 0.6275 | 0.6639 | 18 | 18 | None | 0 | None |
+| f04 | broadband_weighted_node_strength | 0.7773 | 0.7758 | 64.3 | 46.2 | 52.9 | 32.4 | 62.8 | 43.2 | 0.7583 | 0.8085 | 0.7363 | 0.7703 | 15 | 13 | None | 0 | None |
+| f05 | broadband_weighted_edge_strength | 0.4157 | 0.4266 | 38.6 | 22.2 | 41.2 | 20.6 | 39.7 | 16.2 | 0.4121 | 0.4919 | 0.375 | 0.4005 | 16 | 17 | None | 2 | F7-C3, T6-O1 |
+| f06 | broadband_weighted_node_eigenvector | 0.6977 | 0.7814 | 2.9 | 3.5 | 8.8 | 5.9 | 5.1 | 2.7 | 0.7856 | 0.8279 | 0.7022 | 0.7617 | 18 | 17 | None | 0 | None |
+| f07 | broadband_weighted_edge_eigenvector | 0.6147 | 0.6967 | 2.9 | 5.3 | 8.8 | 8.8 | 5.1 | 8.1 | 0.6879 | 0.7495 | 0.6226 | 0.6596 | 18 | 18 | None | 0 | None |
 | f08 | broadband_weighted_node_closeness | 0.8365 | 0.8214 | 91.2 | 69.6 | 85.3 | 67.6 | 89.7 | 59.5 | 0.7933 | 0.8334 | 0.7973 | 0.8063 | 9 | 10 | None | 0 | None |
 | f09 | broadband_weighted_edge_closeness | 0.861 | 0.8346 | 94.2 | 67.3 | 85.3 | 64.7 | 92.3 | 56.8 | 0.8104 | 0.8468 | 0.8209 | 0.8275 | 10 | 10 | None | 0 | None |
 | f10 | broadband_binary_adjacency | 0.4159 | 0.466 | 8.2 | 25.7 | 20.6 | 29.4 | 14.1 | 24.3 | 0.4327 | 0.5563 | 0.4282 | 0.4704 | 10 | 14 | None | 1 | T6-O1 |

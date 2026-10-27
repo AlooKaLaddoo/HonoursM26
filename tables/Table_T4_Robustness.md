@@ -10,10 +10,10 @@
 | Check 1 | 0/0 Rule (0/0 = 0) | f20 | delta_binary_adjacency | U_1 | 0.4581 | 0.2315 | -0.2266 | -49.47 | Moderate shift |
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f01 | broadband_weighted_correlation | U_1 | 0.6114 | 0.6105 | -0.0008 | -0.14 | Conserved |
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f01 | broadband_weighted_correlation | I_diff (%) | 0.83 | 0.81 | -0.02 | -2.72 | Direction preserved |
-| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f04 | broadband_weighted_node_strength | U_1 | 0.805 | 0.8034 | -0.0016 | -0.2 | Conserved |
-| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.61 | 0.74 | 0.13 | 20.53 | Direction preserved |
-| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f05 | broadband_weighted_edge_strength | U_1 | 0.443 | 0.442 | -0.001 | -0.22 | Conserved |
-| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.23 | 1.24 | 0.01 | 0.96 | Direction preserved |
+| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f04 | broadband_weighted_node_strength | U_1 | 0.7611 | 0.7592 | -0.0019 | -0.25 | Conserved |
+| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.74 | 0.87 | 0.13 | 17.68 | Direction preserved |
+| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f05 | broadband_weighted_edge_strength | U_1 | 0.431 | 0.4298 | -0.0012 | -0.28 | Conserved |
+| Check 2 | Combinatorial Epoch Pairing (144 pairs) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.29 | 1.31 | 0.02 | 1.2 | Direction preserved |
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f06 | broadband_weighted_node_eigenvector | U_1 | 0.797 | 0.7971 | 0.0002 | 0.02 | Conserved |
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f06 | broadband_weighted_node_eigenvector | I_diff (%) | 0.99 | 1.05 | 0.06 | 5.92 | Direction preserved |
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f10 | broadband_binary_adjacency | U_1 | 0.4671 | 0.4678 | 0.0007 | 0.15 | Conserved |
@@ -26,10 +26,10 @@
 | Check 2 | Combinatorial Epoch Pairing (144 pairs) | f21 | theta_weighted_correlation | I_diff (%) | 1.09 | 1.01 | -0.08 | -7.14 | Direction preserved |
 | Check 3 | Window Length (K = 6 epochs) | f01 | broadband_weighted_correlation | U_1 | 0.6114 | 0.6079 | -0.0034 | -0.56 | Stable |
 | Check 3 | Window Length (K = 6 epochs) | f01 | broadband_weighted_correlation | I_diff (%) | 0.83 | 0.74 | -0.09 | -11.05 | Direction preserved |
-| Check 3 | Window Length (K = 6 epochs) | f04 | broadband_weighted_node_strength | U_1 | 0.805 | 0.8 | -0.005 | -0.62 | Stable |
-| Check 3 | Window Length (K = 6 epochs) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.61 | 0.53 | -0.08 | -13.6 | Direction preserved |
-| Check 3 | Window Length (K = 6 epochs) | f05 | broadband_weighted_edge_strength | U_1 | 0.443 | 0.4389 | -0.004 | -0.91 | Stable |
-| Check 3 | Window Length (K = 6 epochs) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.23 | 1.01 | -0.22 | -17.79 | Direction preserved |
+| Check 3 | Window Length (K = 6 epochs) | f04 | broadband_weighted_node_strength | U_1 | 0.7611 | 0.7558 | -0.0052 | -0.69 | Stable |
+| Check 3 | Window Length (K = 6 epochs) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.74 | 0.63 | -0.11 | -14.6 | Direction preserved |
+| Check 3 | Window Length (K = 6 epochs) | f05 | broadband_weighted_edge_strength | U_1 | 0.431 | 0.4269 | -0.0041 | -0.94 | Stable |
+| Check 3 | Window Length (K = 6 epochs) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.29 | 1.06 | -0.23 | -17.95 | Direction preserved |
 | Check 3 | Window Length (K = 6 epochs) | f06 | broadband_weighted_node_eigenvector | U_1 | 0.797 | 0.7965 | -0.0005 | -0.06 | Stable |
 | Check 3 | Window Length (K = 6 epochs) | f06 | broadband_weighted_node_eigenvector | I_diff (%) | 0.99 | 0.83 | -0.16 | -16.44 | Direction preserved |
 | Check 3 | Window Length (K = 6 epochs) | f10 | broadband_binary_adjacency | U_1 | 0.4671 | 0.4728 | 0.0056 | 1.21 | Stable |
@@ -42,14 +42,14 @@
 | Check 3 | Window Length (K = 6 epochs) | f21 | theta_weighted_correlation | I_diff (%) | 1.09 | 1.04 | -0.05 | -4.34 | Direction preserved |
 | Check 4 | Twin Exclusion (N = 17) | f01 | broadband_weighted_correlation | U_1 | 0.6114 | 0.6144 | 0.0031 | 0.5 | Conserved |
 | Check 4 | Twin Exclusion (N = 17) | f01 | broadband_weighted_correlation | I_diff (%) | 0.83 | 0.66 | -0.17 | -20.32 | Robust to genetics |
-| Check 4 | Twin Exclusion (N = 17) | f04 | broadband_weighted_node_strength | U_1 | 0.805 | 0.8028 | -0.0022 | -0.27 | Conserved |
-| Check 4 | Twin Exclusion (N = 17) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.61 | 0.58 | -0.03 | -5.04 | Robust to genetics |
-| Check 4 | Twin Exclusion (N = 17) | f05 | broadband_weighted_edge_strength | U_1 | 0.443 | 0.4442 | 0.0012 | 0.28 | Conserved |
-| Check 4 | Twin Exclusion (N = 17) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.23 | 1.01 | -0.22 | -18.14 | Robust to genetics |
+| Check 4 | Twin Exclusion (N = 17) | f04 | broadband_weighted_node_strength | U_1 | 0.7611 | 0.7588 | -0.0023 | -0.3 | Conserved |
+| Check 4 | Twin Exclusion (N = 17) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.74 | 0.7 | -0.04 | -5.84 | Robust to genetics |
+| Check 4 | Twin Exclusion (N = 17) | f05 | broadband_weighted_edge_strength | U_1 | 0.431 | 0.4322 | 0.0012 | 0.28 | Conserved |
+| Check 4 | Twin Exclusion (N = 17) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.29 | 1.06 | -0.23 | -17.96 | Robust to genetics |
 | Check 4 | Twin Exclusion (N = 17) | f06 | broadband_weighted_node_eigenvector | U_1 | 0.797 | 0.8046 | 0.0076 | 0.96 | Conserved |
 | Check 4 | Twin Exclusion (N = 17) | f06 | broadband_weighted_node_eigenvector | I_diff (%) | 0.99 | 0.61 | -0.39 | -39.04 | Robust to genetics |
-| Check 4 | Twin Exclusion (N = 17) | f07 | broadband_weighted_edge_eigenvector | U_1 | 0.7127 | 0.7196 | 0.0069 | 0.97 | Conserved |
-| Check 4 | Twin Exclusion (N = 17) | f07 | broadband_weighted_edge_eigenvector | I_diff (%) | 1.08 | 0.71 | -0.37 | -34.09 | Robust to genetics |
+| Check 4 | Twin Exclusion (N = 17) | f07 | broadband_weighted_edge_eigenvector | U_1 | 0.7083 | 0.7153 | 0.007 | 0.99 | Conserved |
+| Check 4 | Twin Exclusion (N = 17) | f07 | broadband_weighted_edge_eigenvector | I_diff (%) | 1.09 | 0.72 | -0.37 | -34.11 | Robust to genetics |
 | Check 4 | Twin Exclusion (N = 17) | f10 | broadband_binary_adjacency | U_1 | 0.4671 | 0.4698 | 0.0027 | 0.57 | Conserved |
 | Check 4 | Twin Exclusion (N = 17) | f10 | broadband_binary_adjacency | I_diff (%) | 0.66 | 0.31 | -0.35 | -53.63 | Robust to genetics |
 | Check 4 | Twin Exclusion (N = 17) | f12 | broadband_binary_edge_betweenness | U_1 | 0.1746 | 0.1769 | 0.0023 | 1.31 | Conserved |
@@ -62,14 +62,14 @@
 | Check 4 | Twin Exclusion (N = 17) | f21 | theta_weighted_correlation | I_diff (%) | 1.09 | 1.05 | -0.04 | -3.65 | Robust to genetics |
 | Check 5 | Pattern-Only (L1 normalization) | f01 | broadband_weighted_correlation | U_1 | 0.6114 | 0.6218 | 0.0104 | 1.71 | Conserved |
 | Check 5 | Pattern-Only (L1 normalization) | f01 | broadband_weighted_correlation | I_diff (%) | 0.83 | 0.57 | -0.26 | -31.16 | Shape preserves individuality |
-| Check 5 | Pattern-Only (L1 normalization) | f04 | broadband_weighted_node_strength | U_1 | 0.805 | 0.8672 | 0.0622 | 7.73 | Conserved |
-| Check 5 | Pattern-Only (L1 normalization) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.61 | 0.63 | 0.02 | 2.82 | Shape preserves individuality |
-| Check 5 | Pattern-Only (L1 normalization) | f05 | broadband_weighted_edge_strength | U_1 | 0.443 | 0.4776 | 0.0347 | 7.82 | Conserved |
-| Check 5 | Pattern-Only (L1 normalization) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.23 | 0.99 | -0.24 | -19.19 | Shape preserves individuality |
+| Check 5 | Pattern-Only (L1 normalization) | f04 | broadband_weighted_node_strength | U_1 | 0.7611 | 0.8335 | 0.0724 | 9.52 | Conserved |
+| Check 5 | Pattern-Only (L1 normalization) | f04 | broadband_weighted_node_strength | I_diff (%) | 0.74 | 0.77 | 0.02 | 3.07 | Shape preserves individuality |
+| Check 5 | Pattern-Only (L1 normalization) | f05 | broadband_weighted_edge_strength | U_1 | 0.431 | 0.4721 | 0.0411 | 9.54 | Conserved |
+| Check 5 | Pattern-Only (L1 normalization) | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.29 | 1.05 | -0.24 | -18.39 | Shape preserves individuality |
 | Check 5 | Pattern-Only (L1 normalization) | f06 | broadband_weighted_node_eigenvector | U_1 | 0.797 | 0.7938 | -0.0031 | -0.39 | Conserved |
 | Check 5 | Pattern-Only (L1 normalization) | f06 | broadband_weighted_node_eigenvector | I_diff (%) | 0.99 | 0.96 | -0.04 | -3.9 | Shape preserves individuality |
-| Check 5 | Pattern-Only (L1 normalization) | f07 | broadband_weighted_edge_eigenvector | U_1 | 0.7127 | 0.7121 | -0.0006 | -0.08 | Conserved |
-| Check 5 | Pattern-Only (L1 normalization) | f07 | broadband_weighted_edge_eigenvector | I_diff (%) | 1.08 | 1.07 | -0.01 | -0.91 | Shape preserves individuality |
+| Check 5 | Pattern-Only (L1 normalization) | f07 | broadband_weighted_edge_eigenvector | U_1 | 0.7083 | 0.7075 | -0.0008 | -0.11 | Conserved |
+| Check 5 | Pattern-Only (L1 normalization) | f07 | broadband_weighted_edge_eigenvector | I_diff (%) | 1.09 | 1.08 | -0.01 | -0.76 | Shape preserves individuality |
 | Check 5 | Pattern-Only (L1 normalization) | f19 | delta_weighted_correlation | U_1 | 0.6084 | 0.6168 | 0.0084 | 1.38 | Conserved |
 | Check 5 | Pattern-Only (L1 normalization) | f19 | delta_weighted_correlation | I_diff (%) | 0.75 | 0.53 | -0.22 | -28.83 | Shape preserves individuality |
 | Check 5 | Pattern-Only (L1 normalization) | f21 | theta_weighted_correlation | U_1 | 0.5911 | 0.6023 | 0.0113 | 1.91 | Conserved |
@@ -82,8 +82,8 @@
 | Check 8 | Fixed-Density Binarization (Top-58 Edges) | f10 | broadband_binary_adjacency (Fixed Density) | I_diff (%) | 0.66 | 0.68 | 0.03 | 3.98 | Identifiability identical to GCC |
 | Check 9 | Physical Distance Regression | f01 | broadband_weighted_correlation | U_1 | 0.6114 | 0.6789 | 0.0676 | 11.05 | Universality survives distance control |
 | Check 9 | Physical Distance Regression | f01 | broadband_weighted_correlation | I_diff (%) | 0.83 | 0.87 | 0.04 | 5.02 | Individuality robust to distance |
-| Check 9 | Physical Distance Regression | f05 | broadband_weighted_edge_strength | U_1 | 0.443 | 0.5824 | 0.1394 | 31.47 | Universality survives distance control |
-| Check 9 | Physical Distance Regression | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.23 | 1.32 | 0.09 | 7.32 | Individuality robust to distance |
+| Check 9 | Physical Distance Regression | f05 | broadband_weighted_edge_strength | U_1 | 0.431 | 0.5702 | 0.1393 | 32.31 | Universality survives distance control |
+| Check 9 | Physical Distance Regression | f05 | broadband_weighted_edge_strength | I_diff (%) | 1.29 | 1.37 | 0.08 | 6.28 | Individuality robust to distance |
 | Check 9 | Physical Distance Regression | f19 | delta_weighted_correlation | U_1 | 0.6084 | 0.6746 | 0.0661 | 10.87 | Universality survives distance control |
 | Check 9 | Physical Distance Regression | f19 | delta_weighted_correlation | I_diff (%) | 0.75 | 0.79 | 0.05 | 6.13 | Individuality robust to distance |
 | Check 9 | Physical Distance Regression | f21 | theta_weighted_correlation | U_1 | 0.5911 | 0.664 | 0.0729 | 12.33 | Universality survives distance control |
