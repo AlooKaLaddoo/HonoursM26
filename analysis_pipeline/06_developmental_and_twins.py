@@ -1,7 +1,7 @@
 """
 Phase 6: Developmental Trajectories, Mantel Tests, & Sibling/Twin Analysis (Step 6)
 Computes:
-  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (10,000 permutations)
+  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (200,000 permutations by default)
   - Correlation between self-similarity M[a, a] / idiff(a) and inter-session time gap (in days)
   - Individual reports for short-gap infant sub-NORB00064 (4 days) and sub-NORB00069 (42 days)
   - Complete Sibling/Twin Analysis (Table T6) for male twin pair sub-NORB00086 and sub-NORB00087:
@@ -62,11 +62,11 @@ def load_exact_subject_ages():
     return ages_yr, ages_days
 
 
-def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 10000, seed: int = 42):
+def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 200000, seed: int = 42):
     """
     Mantel test (Step 6.3):
     Spearman correlation between 171 upper-triangle entries of S and D.
-    Permutes infant rows and columns of D simultaneously 10,000 times.
+    Permutes infant rows and columns of D simultaneously n_permutations times.
     Uses precomputed standardized ranks for bit-exact Spearman correlation at ~10x speed.
     """
     rng = np.random.default_rng(seed)
@@ -95,9 +95,9 @@ def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 1000
     return obs_rho, p_two_sided
 
 
-def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 10000, seed: int = 42):
+def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 200000, seed: int = 42):
     """
-    Spearman rank correlation with 10,000 permutations of vector y (Step 6.2).
+    Spearman rank correlation with n_permutations permutations of vector y (Step 6.2).
     """
     rng = np.random.default_rng(seed)
     n = len(x)
@@ -116,7 +116,7 @@ def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 10000, see
     return obs_rho, p_two_sided
 
 
-def run_developmental_and_twins(n_permutations: int = 10000):
+def run_developmental_and_twins(n_permutations: int = 200000):
     print("=" * 80)
     print("PHASE 6: DEVELOPMENTAL ANALYSES & TWIN/SIBLING AUDIT (STEP 6)")
     print("=" * 80)

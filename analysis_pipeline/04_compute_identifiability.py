@@ -6,9 +6,9 @@ Computes:
   - I_self, I_others, and Differential Identifiability I_diff
   - 1-Nearest Neighbor Identification Accuracy (ses-1 -> ses-2, ses-2 -> ses-1, and Mean)
   - Element-level M_e, I_self(e), I_others(e), and I_diff(e)
-  - Permutation tests (10,000 column permutations) for global I_diff, accuracy, and element I_diff(e)
+  - Permutation tests (200,000 column permutations by default) for global I_diff, accuracy, and element I_diff(e)
   - Benjamini-Hochberg FDR correction across elements (q < 0.05)
-  - Infant bootstrap 95% Confidence Intervals (10,000 resamples)
+  - Infant bootstrap 95% Confidence Intervals (as many resamples as permutations)
 Saves M matrices as .npy and summary JSON.
 """
 import json
@@ -38,7 +38,7 @@ else:
     from .utils import element_J, recording_S
 
 
-def infant_identifiability_bootstrap(M: np.ndarray, B: int = 10000, seed: int = 42):
+def infant_identifiability_bootstrap(M: np.ndarray, B: int = 200000, seed: int = 42):
     """
     Infant bootstrap (Step 7.2 item 3) for matrix M.
     I_self = mean(M[dp, dp]), I_others = mean(M[dp, dq] for dp != dq).
@@ -75,7 +75,7 @@ def infant_identifiability_bootstrap(M: np.ndarray, B: int = 10000, seed: int = 
     }
 
 
-def run_identifiability(n_permutations: int = 10000, seed: int = 42):
+def run_identifiability(n_permutations: int = 200000, seed: int = 42):
     rng = np.random.default_rng(seed)
     n_subs = len(SUBJECT_IDS)
     
@@ -155,7 +155,7 @@ def run_identifiability(n_permutations: int = 10000, seed: int = 42):
             per_infant_others[a] = np.mean(row_off + col_off)
         per_infant_idiff = (per_infant_self - per_infant_others) * 100.0
         
-        # 6. Permutation Tests (10,000 permutations of columns of M)
+        # 6. Permutation Tests (n_permutations permutations of columns of M)
         null_idiff = np.empty(n_permutations, dtype=np.float64)
         null_acc_f = np.empty(n_permutations, dtype=np.float64)
         null_acc_b = np.empty(n_permutations, dtype=np.float64)
@@ -212,8 +212,8 @@ def run_identifiability(n_permutations: int = 10000, seed: int = 42):
         # FDR correction across elements
         _, q_elem, _, _ = multipletests(p_elem, method="fdr_bh")
         
-        # Bootstrap stats
-        boot_stats = infant_identifiability_bootstrap(M, B=10000, seed=1000 + fid_idx)
+        # Bootstrap stats (draws follow n_permutations, so a quick run is quick throughout)
+        boot_stats = infant_identifiability_bootstrap(M, B=n_permutations, seed=1000 + fid_idx)
         
         feat_res = {
             "fid": fid,

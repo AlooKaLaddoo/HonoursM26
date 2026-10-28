@@ -6,7 +6,7 @@ Computes:
   - Matched others baseline O_s(a) and O_s(a, e)
   - Within-session identifiability diff_within_s = W_s - O_s
   - Odd/Even split sensitivity check (odd k vs even k, paired k with k+1)
-  - Infant-level bootstrap 95% Confidence Intervals (10,000 resamples)
+  - Infant-level bootstrap 95% Confidence Intervals (200,000 resamples by default)
 """
 import json
 import sys
@@ -37,7 +37,7 @@ else:
     )
     from .utils import element_J, recording_S
 
-def infant_value_bootstrap(values: np.ndarray, B: int = 10000, seed: int = 42):
+def infant_value_bootstrap(values: np.ndarray, B: int = 200000, seed: int = 42):
     """Infant-level ordinary bootstrap for infant-level metrics (Step 7.2 item 2)."""
     rng = np.random.default_rng(seed)
     n = len(values)
@@ -53,7 +53,7 @@ def infant_value_bootstrap(values: np.ndarray, B: int = 10000, seed: int = 42):
         "ci_95": [float(ci_low), float(ci_high)]
     }
 
-def run_within_session():
+def run_within_session(n_bootstrap: int = 200000):
     n_subs = len(SUBJECT_IDS)
     half_K = N_EPOCHS // 2 # 6 epochs
     
@@ -120,14 +120,14 @@ def run_within_session():
             np.save(OUTPUT_TENSORS_DIR / f"diff_within_elem_{fid}_{ses}.npy", diff_within_elem)
             
             # Bootstrap CIs
-            boot_W = infant_value_bootstrap(W_self_rec, seed=100 + ses_idx)
-            boot_O = infant_value_bootstrap(O_others_rec, seed=200 + ses_idx)
-            boot_diff = infant_value_bootstrap(diff_within_rec, seed=300 + ses_idx)
+            boot_W = infant_value_bootstrap(W_self_rec, B=n_bootstrap, seed=100 + ses_idx)
+            boot_O = infant_value_bootstrap(O_others_rec, B=n_bootstrap, seed=200 + ses_idx)
+            boot_diff = infant_value_bootstrap(diff_within_rec, B=n_bootstrap, seed=300 + ses_idx)
             
             # Test diff > 0 bootstrap p-value
             rng_p = np.random.default_rng(400 + ses_idx)
-            diff_boots = [np.mean(diff_within_rec[rng_p.integers(0, n_subs, n_subs)]) for _ in range(10000)]
-            p_val_diff = float(max(1.0 / 10000, np.mean(np.array(diff_boots) <= 0)))
+            diff_boots = [np.mean(diff_within_rec[rng_p.integers(0, n_subs, n_subs)]) for _ in range(n_bootstrap)]
+            p_val_diff = float(max(1.0 / n_bootstrap, np.mean(np.array(diff_boots) <= 0)))
             
             # 2. Odd/Even Split Sensitivity Check
             W_oddeven_rec = np.zeros(n_subs, dtype=np.float64)
@@ -135,7 +135,7 @@ def run_within_session():
                 odd_epochs = X[a, ses_idx, 0::2, :] # k = 0, 2, 4, 6, 8, 10
                 even_epochs = X[a, ses_idx, 1::2, :] # k = 1, 3, 5, 7, 9, 11
                 W_oddeven_rec[a] = recording_S(odd_epochs, even_epochs)
-            boot_oddeven = infant_value_bootstrap(W_oddeven_rec, seed=500 + ses_idx)
+            boot_oddeven = infant_value_bootstrap(W_oddeven_rec, B=n_bootstrap, seed=500 + ses_idx)
             
             feat_res[ses] = {
                 "W_global": float(np.mean(W_self_rec)),

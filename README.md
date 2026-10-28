@@ -40,10 +40,10 @@ This runs every step from phase 2 onwards and writes the results to `tables/`, `
 It skips phase 1 by default, because phase 1 only rebuilds the input data, which is already saved in `processed_tensors/`. To rebuild everything from the raw recordings, start at phase 1:
 
 ```bash
-.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 10000 --workers 8
+.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 200000 --workers 8
 ```
 
-- `--permutations`: how many random shuffles to use for the significance tests (default 10,000; fewer runs faster).
+- `--permutations`: how many random shuffles to use for the significance tests (default 200,000; fewer runs faster). Phases 2–4 also use this number of draws for their bootstrap confidence intervals.
 - `--workers`: how many CPU cores to use (default 8).
 
 You can also run a single step on its own, for example:

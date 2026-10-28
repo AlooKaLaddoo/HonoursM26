@@ -6,8 +6,8 @@ Computes:
   - Recording-level universality U_1, U_2, and Delta U
   - Per-infant universality u_s(a) and Delta u(a)
   - Regional universality (5 node regions, 15 edge region pairs)
-  - Element-shuffle null hypothesis permutation tests (10,000 permutations per feature/session)
-  - Infant-level bootstrap 95% Confidence Intervals (10,000 resamples)
+  - Element-shuffle null hypothesis permutation tests (200,000 permutations per feature/session by default)
+  - Infant-level bootstrap 95% Confidence Intervals (as many resamples as permutations)
   - Benjamini-Hochberg FDR correction across elements (q < 0.05)
   - Undefined (0/0) occurrence tracking per element
 Saves intermediate pair arrays and summary JSON.
@@ -15,6 +15,7 @@ Saves intermediate pair arrays and summary JSON.
 import json
 import sys
 import time
+import warnings
 from concurrent.futures import ProcessPoolExecutor
 from itertools import combinations
 from pathlib import Path
@@ -63,7 +64,7 @@ def get_edge_region_pair(edge: str) -> str:
     else:
         return f"{r2}-{r1}"
 
-def infant_pair_bootstrap(S_matrix: np.ndarray, B: int = 10000, seed: int = 42):
+def infant_pair_bootstrap(S_matrix: np.ndarray, B: int = 200000, seed: int = 42):
     """
     Infant-level bootstrap (Step 7.2) for pair-based statistics.
     Resamples 19 infants with replacement, ignoring self-comparisons.
@@ -104,7 +105,10 @@ def _run_perm_worker(seed: int, n_perms: int, A_stacked: np.ndarray, B_stacked: 
         # Element Jaccard: (n_pairs, 12, dim)
         with np.errstate(divide="ignore", invalid="ignore"):
             j_elem = np.where(max_v > 0, min_v / max_v, np.nan)
-        null_U_e = np.nanmean(j_elem, axis=(0, 1))
+        # Average over epochs within each pair, then over pairs, exactly like the observed U_elem
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)  # pairs that are 0/0 in all 12 epochs
+            null_U_e = np.nanmean(np.nanmean(j_elem, axis=1), axis=0)
         null_elem_ge += (null_U_e >= obs_U_elem).astype(np.int32)
         
         # Recording Jaccard: sum over elements
@@ -122,10 +126,10 @@ def run_element_shuffle_null(
     dim: int,
     obs_U_elem: np.ndarray,
     obs_U_global: float,
-    n_permutations: int = 10000,
+    n_permutations: int = 200000,
     n_workers: int = 8,
 ) -> tuple[np.ndarray, float]:
-    """Runs 10,000 element-shuffle permutations across multiple worker processes."""
+    """Runs n_permutations element-shuffle permutations across multiple worker processes."""
     perms_per_worker = n_permutations // n_workers
     remainder = n_permutations % n_workers
     
@@ -142,11 +146,14 @@ def run_element_shuffle_null(
     all_null_globals = np.concatenate([r[1] for r in results])
     
     p_elem: np.ndarray = (1.0 + total_elem_ge) / (1.0 + n_permutations)
+    # Elements that are 0/0 in every comparison have no observed U; no null value is >= NaN,
+    # so without this they would get the smallest possible p-value
+    p_elem[np.isnan(obs_U_elem)] = 1.0
     p_global = (1.0 + np.sum(all_null_globals >= obs_U_global)) / (1.0 + n_permutations)
     
     return p_elem, float(p_global)
 
-def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
+def run_phase_2(n_permutations: int = 200000, n_workers: int = 8):
     start_total = time.time()
     n_subs = len(SUBJECT_IDS)
     pairs = list(combinations(range(n_subs), 2))
@@ -241,7 +248,7 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
                     if idxs:
                         reg_U[rp] = float(np.nanmean(U_elem[idxs]))
                         
-            # Element-shuffle null permutations (10,000)
+            # Element-shuffle null permutations
             p_elem, p_global = run_element_shuffle_null(
                 A_stacked, B_stacked, dim, U_elem, U_global,
                 n_permutations=n_permutations, n_workers=n_workers
@@ -251,8 +258,8 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
             fdr_results = multipletests(p_elem, method="fdr_bh")
             q_elem: np.ndarray = np.asarray(fdr_results[1])
             
-            # Infant bootstrap CI
-            boot_stats = infant_pair_bootstrap(S_mat, B=10000, seed=42 + ses_idx)
+            # Infant bootstrap CI (draws follow n_permutations, so a quick run is quick throughout)
+            boot_stats = infant_pair_bootstrap(S_mat, B=n_permutations, seed=42 + ses_idx)
             
             feat_res[ses] = {
                 "U_global": U_global,
@@ -281,9 +288,9 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
         # For each bootstrap resample, compute difference between ses-2 mean and ses-1 mean
         rng_d = np.random.default_rng(999)
         p_idx, q_idx = np.triu_indices(n_subs, k=1)
-        boot_delta = np.empty(10000, dtype=np.float64)
+        boot_delta = np.empty(n_permutations, dtype=np.float64)
         S1, S2 = session_S_mats[0], session_S_mats[1]
-        for b_i in range(10000):
+        for b_i in range(n_permutations):
             d = rng_d.integers(0, n_subs, n_subs)
             keep = d[p_idx] != d[q_idx]
             b_u1 = np.nanmean(S1[d[p_idx][keep], d[q_idx][keep]])
@@ -293,7 +300,7 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
         
         # Two-sided bootstrap p-value for Delta U != 0
         p_delta = 2.0 * min(np.mean(boot_delta <= 0), np.mean(boot_delta >= 0))
-        p_delta = max(p_delta, 1.0 / 10000)
+        p_delta = max(p_delta, 1.0 / n_permutations)
         
         feat_res["developmental_shift"] = {
             "delta_U_global": float(delta_U_global),
@@ -322,4 +329,4 @@ def run_phase_2(n_permutations: int = 10000, n_workers: int = 8):
     return results
 
 if __name__ == "__main__":
-    run_phase_2(n_permutations=10000, n_workers=8)
+    run_phase_2(n_permutations=200000, n_workers=8)

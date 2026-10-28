@@ -10,7 +10,7 @@ import time
 def main():
     parser = argparse.ArgumentParser(description="Master Infant EEG Longitudinal Analysis Pipeline")
     parser.add_argument("--start-phase", type=int, default=2, help="Phase number to start from (default: 2)")
-    parser.add_argument("--permutations", type=int, default=200000, help="Number of permutations (default: 2,00,000)")
+    parser.add_argument("--permutations", type=int, default=200000, help="Number of permutations and bootstrap draws (default: 2,00,000)")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel worker processes (default: 8)")
     args = parser.parse_args()
 
@@ -30,7 +30,7 @@ def main():
 
     if args.start_phase <= 3:
         mod3 = importlib.import_module("analysis_pipeline.03_compute_within_session")
-        mod3.run_within_session()
+        mod3.run_within_session(n_bootstrap=args.permutations)
 
     if args.start_phase <= 4:
         mod4 = importlib.import_module("analysis_pipeline.04_compute_identifiability")
