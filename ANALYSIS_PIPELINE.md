@@ -620,11 +620,15 @@ What this shows:
      3. The 95% CI is the range between the 2.5th and 97.5th percentiles of the 200,000 differences; their median is also reported.
      4. Two-sided p-value: twice the smaller of (the share of differences $\le 0$) and (the share $\ge 0$), never smaller than $1/B$. A small p means the change is consistently in one direction.
      5. $\Delta U(e) = U_2(e) - U_1(e)$ for every element, and $\Delta u(a) = u_2(a) - u_1(a)$ for every infant, are computed and reported.
+     6. In `06_developmental_and_twins.py`, the $\Delta U$ p-values are FDR-corrected across the 26 feature sets (`q_value`). Applied to the 27 Oct run, 7 of the 11 features with $p < 0.05$ stay significant.
+   * **Age-spread caveat.** Ages are more spread out at `ses-2` than at `ses-1`, so infants at `ses-2` differ more in age, which by itself could lower $U_2$. The mean age difference over the 171 pairs is therefore reported next to $\Delta U$ (`mean_abs_dage_days`): **21.3 days at `ses-1` and 23.8 days at `ses-2`**. Read $\Delta U$ together with the Mantel test (item 3), which shows whether similarity actually falls with age difference.
    * **Not yet implemented:** the element-level test. The specification asks for $\Delta U(e)$ to be tested with the infant bootstrap and FDR-corrected across elements, but the code currently reports $\Delta U(e)$ without a test, so element-level changes have no p- or q-values yet (Section 8).
 2. **Decay with inter-session gap:** does self-similarity fade as more time passes between the visits?
    * Compute the Spearman correlation $\rho$ between self-similarity $M[a, a]$ and the inter-session time gap (in days), across the 19 infants. Spearman correlation works on ranks: it measures whether one quantity consistently rises (or falls) as the other rises. A negative $\rho$ here would mean that self-similarity decays as the gap grows.
    * Compute the Spearman correlation between $i_{\text{diff}}(a)$ and the time gap. $i_{\text{diff}}(a)$ is infant $a$'s own differential identifiability: their self-similarity $M[a, a]$ minus their average similarity to the other infants (the other cells in row $a$ and column $a$ of $M$), multiplied by 100.
+   * Repeat both correlations with each infant's age at `ses-1` in place of the time gap (`self_vs_age1`, `idiff_vs_age1`).
    * Null model: 200,000 permutations of the interval vector, i.e. randomly reassigning which time gap belongs to which infant. The p-value is two-sided: it counts the shuffles whose $\lvert \rho \rvert$ is at least as large as the real $\lvert \rho \rvert$. Repeating this with 50,000, 100,000 and 2,000,000 permutations, and intermediate values, is planned (Section 8).
+   * Each of the four correlations is FDR-corrected across the 26 feature sets (a `q` next to each `p`).
    * Specific reporting: highlight the short-gap test-retest infant `sub-NORB00064` (recorded twice only 4 days apart, so there is almost no development in between) and the intermediate infant `sub-NORB00069` (42 days).
 3. **Age discrepancy vs. network similarity (Mantel test):** are infants who are closer in age also more similar in their networks?
    * Matrix 1: the $19 \times 19$ similarity matrix $S_{(a, s), (b, s)}$ between infants within one session. Yes, it is infant × infant for one particular session; the test is run separately for `ses-1` and `ses-2`. It is **symmetric** ($S[a, b] = S[b, a]$, because comparing $a$ with $b$ is the same as comparing $b$ with $a$), and its diagonal is empty, because an infant is not compared with itself within a session.
@@ -632,11 +636,21 @@ What this shows:
    * Because both matrices are symmetric, only one triangle carries information, which is why only the upper triangle is used below.
    * Statistic: the Spearman rank correlation $\rho$ across the 171 upper-triangle elements, i.e. the cells above the diagonal, which cover each pair of infants once.
    * Null model: 200,000 simultaneous row/column infant permutations of matrix $D$: shuffle which infant is which in $D$, moving rows and columns together, so that $D$ stays a valid age-difference table while any link to $S$ is broken. The p-value is two-sided (shuffles with $\lvert \rho \rvert$ at least as large as the real one). Repeating this with 50,000, 100,000 and 2,000,000 permutations, and intermediate values, is planned (Section 8).
-4. **Twin / sibling pair analysis (`sub-NORB00086` & `sub-NORB00087`, Table T6):** are the twins more alike than unrelated infants? Below, "86" and "87" are short for the two twins.
-   * Percentile rank of the twins' similarity $S_{(86, s), (87, s)}$ among all 171 pairs. For example, the 99th percentile would mean the twins are more similar than 99% of pairs.
-   * Rank against matched control pairs: pairs involving either twin, and non-twin pairs whose ages differ by at most 7 days ($|\Delta\text{age}| \le 7$ days).
-   * Cross-session cross-identification: look at $M[86, 87]$ and $M[87, 86]$ to see whether twin A is misidentified as twin B, i.e. whether one twin's first-visit recording looks more like the other twin's second-visit recording than like their own.
-   * Shared elements: elements where the twins' similarity exceeds the 95th percentile of non-sibling pairs, i.e. where the twins are more alike than 95% of unrelated pairs.
+   * The Mantel p-values of each session are FDR-corrected across the 26 feature sets (`q`). In the 27 Oct run no feature reaches $p < 0.05$ at either session, so similarity does not measurably fall with age difference.
+4. **Twin / sibling pair analysis (`sub-NORB00086` & `sub-NORB00087`, Table T6):** are the twins more alike than unrelated infants? Below, "86" and "87" are short for the two twins. With only one pair, every result is a descriptive rank, not a significance test. Items (a)–(c) are run at recording level and again for every element.
+   * **(a) Rank among all pairs.** Percentile rank of the twins' similarity $S_{(86, s), (87, s)}$ among all 171 pairs. For example, the 99th percentile would mean the twins are more similar than 99% of pairs.
+   * **(b) Rank against matched control pairs**, which rule out two other explanations for a high twin similarity:
+     * the 34 other pairs involving either twin (36 with 20 infants), which control for each twin's general similarity to everyone;
+     * the non-twin pairs whose ages differ by at most 7 days ($|\Delta\text{age}| \le 7$ days) at that session: 78 pairs at `ses-1` and 37 at `ses-2`. These control for the twins being the same age.
+
+     For each set, the twins' value, the set's size, median and range (minimum to maximum), and the twins' percentile rank are reported.
+   * **(c) Cross-session cross-identification.** $M[86, 87]$ and $M[87, 86]$ are reported next to $M[86, 86]$ and $M[87, 87]$, with the rank of each twin value within its row and its column (1 = highest). A twin is "identified" as the other if the other twin holds the single highest value:
+     * in their row: their first-visit recording looks most like the other twin's second-visit recording (forward, `ses-1` $\to$ `ses-2`);
+     * or in their column: their second-visit recording looks most like the other twin's first-visit recording (backward).
+
+     A tie for the highest value counts as no identification, as in Phase 4. `misidentified_86_as_87` is true if either direction holds, and the `_fwd` and `_bwd` flags say which. In the 27 Oct results this happens only for f24 (alpha binary adjacency), where 86's first-visit recording is identified as 87 (forward). At element level, `n_elements_misidentified` counts the elements where either twin is identified as the other. With 19 infants and four checks per element, about one element in five is expected by chance, so these counts are not by themselves evidence of a twin effect.
+   * **(d) Shared elements.** Elements where the twins' similarity exceeds the 95th percentile of non-sibling pairs at **both** sessions, i.e. where the twins are more alike than 95% of unrelated pairs. Each shared element is listed with its Phase 5a class, and the number that are "individual" (class Individual or Universal and Individual, i.e. with significant $I_{\text{diff}}(e)$) is reported. This reads `taxonomy_results.json`, so Phase 5 must run before Phase 6. In the 27 Oct results none of the shared elements is individual.
+   * **(e) Same-day control.** The specification asks whether the twins were recorded on the same day, and if so to compare them with other pairs recorded on a common day. This cannot be determined from the dataset: `scans.tsv` has no acquisition date, and every EDF file shows the anonymised date 2023-01-01. The code records this note in each feature's results (`same_day_control`).
 
    > **Status:** the twin analysis is to be treated as a special case study. If the results come out clear and presentable, it may get a separate section or subsection of its own.
 
@@ -672,9 +686,10 @@ These are the rules for deciding whether a result is real or could be due to cha
 | Phase 3, $W_s$, $O_s$, $W_s - O_s$ | Ordinary bootstrap of the 19 per-infant values | Per resample: the mean of 19 values drawn with replacement. One-sided p for $W_s(a) - O_s(a) > 0$: the share of resampled means $\le 0$, never below $1/B$. Seeds 100–500 $+$ session. |
 | Phase 4, $I_{\text{self}}$, $I_{\text{others}}$, $I_{\text{diff}}$ | Infant bootstrap of $M$ | Per resample: $I_{\text{self}}$ = mean of $M[d, d]$ over the drawn infants; $I_{\text{others}}$ = mean of $M[d_p, d_q]$ over off-diagonal positions with $d_p \ne d_q$; $I_{\text{diff}}$ from these two. 95% percentile CIs for all three. Seed 42, the same as the permutation test, so every feature uses the same infant resamples. |
 | Phase 4, $I_{\text{diff}}$, accuracy, $I_{\text{diff}}(e)$ | Column permutation of $M$ | Per permutation: shuffle the 19 columns; recompute $I_{\text{diff}}$, the forward and backward accuracy (ties count as wrong) and every $I_{\text{diff}}(e)$ with the same shuffle. One-sided p as above. Elements with $I_{\text{diff}}(e) \le 0$ or undefined get $p = 1$, since they cannot show "more like oneself". Seed 42. |
-| Phase 6, Spearman and Mantel | Permutation of gaps / infant labels | Two-sided p: count of $\lvert \rho_{\text{null}} \rvert \ge \lvert \rho_{\text{obs}} \rvert$. |
+| Phase 6, Spearman and Mantel | Permutation of gaps / infant labels | Two-sided p: count of $\lvert \rho_{\text{null}} \rvert \ge \lvert \rho_{\text{obs}} \rvert$. Seed 42 for every test and feature, so each test of a feature uses the same sequence of shuffles. |
 | Phases 2 and 4, elements | Benjamini–Hochberg FDR | Applied across the elements **of each feature separately**, at $q < 0.05$. |
 | Phase 4, global tests | Benjamini–Hochberg FDR | The p-values of $I_{\text{diff}}$, forward accuracy and backward accuracy are each corrected across the 26 feature sets, at $q < 0.05$ (`q_idiff`, `q_acc_forward`, `q_acc_backward`). The global tests of Phases 2 and 3 are not yet corrected across feature sets (Section 8). |
+| Phase 6, global tests | Benjamini–Hochberg FDR | The $\Delta U$ p-value, both Mantel tests and the four interval correlations are each corrected across the 26 feature sets, at $q < 0.05$. |
 
 The number of permutations and of bootstrap resamples ($B$) is set by `--permutations` in `run_full_analysis.py` (default 200,000) and is the same for Phases 2, 3, 4 and 6.
 
@@ -728,7 +743,7 @@ Each check is run on a subset of features and compared with that feature's main 
 * **Table T3 (Variance Partition):** feature × element. The proportions of infant (trait), session and epoch (state) variance, without and with the age term, plus model convergence flags (whether each model fit finished successfully). Proportions from fits that did not converge are shown as `NaN`.
 * **Table T4 (Robustness Summary):** check × feature. The main metrics under each of the 9 sensitivity analyses.
 * **Table T5 (Bookkeeping):** the completed subject metadata table (Section 2.2).
-* **Table T6 (Twin / Sibling Analysis):** 26 rows, one per feature set, summarising all twin comparisons.
+* **Table T6 (Twin / Sibling Analysis):** 26 rows, one per feature set, summarising all twin comparisons. The newer Phase 6 fields (matched-set median and range, backward cross-identification, shared-element classes, element-level results) are saved in `twin_results.json` but not yet shown in the table (Section 8).
 
 ### 6.2 Figures (Vector PDF Format)
 
@@ -788,7 +803,9 @@ The intermediate arrays are stored in `processed_tensors/` as `.npy` files, toge
 | Volume conduction check (dwPLI) | Does not use MNE-Connectivity yet; must be re-implemented following its documentation. | Phase 8, check 7 |
 | Average reference check | Needs review with literature backing before use. | Phase 8, check 6 |
 | Element-level $\Delta U(e)$ | Reported without a statistical test; bootstrap and FDR still to be implemented. | Phase 6, item 1 |
-| FDR scope | Element tests are corrected within each feature, and the Phase 4 global tests across the 26 feature sets. The global tests of Phases 2 and 3 are not yet corrected across feature sets, and Table T1 does not yet show the new Phase 4 q-values. | Phase 7 |
+| FDR scope | Element tests are corrected within each feature, and the global tests of Phases 4 and 6 (including $\Delta U$) across the 26 feature sets. The global tests of Phases 2 and 3 are not yet corrected across feature sets, and Table T1 does not yet show the new Phase 4 and Phase 6 q-values. | Phase 7 |
+| Table T6 | Does not yet show the newer Phase 6 fields (matched-set median and range, backward cross-identification, shared-element classes, element-level results). | Section 6.1 |
+| Same-day control (twins) | Cannot be done: the dataset has no recording dates. | Phase 6, item 4 |
 | Number of permutations | Repeat the permutation tests (Phase 6, and the other permutation tests) with 50,000, 100,000 and 2,000,000 permutations, plus intermediate values chosen from the results, and check that p-values and significance stay stable. Not run yet; the current default is 200,000. | Phases 6 and 7 |
 | Epoch length | Two recordings (`sub-NORB00089` and `sub-NORB00103`, `ses-1`) have annotated windows longer than 2.56 s (up to 4.4 s and 5.4 s), which are used at full length. | Section 2.1, Phase 1 |
 | Alpha (and other) sub-bands | Future analysis of sub-bands such as $\alpha_1$, $\alpha_2$. | Section 3.2 |
