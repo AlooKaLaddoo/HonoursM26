@@ -7,7 +7,7 @@ Computes:
   - 1-Nearest Neighbor Identification Accuracy (ses-1 -> ses-2, ses-2 -> ses-1, and Mean)
   - Element-level M_e, I_self(e), I_others(e), and I_diff(e)
   - Permutation tests (200,000 column permutations by default) for global I_diff, accuracy, and element I_diff(e)
-  - Benjamini-Hochberg FDR correction across elements (q < 0.05)
+  - Benjamini-Hochberg FDR correction across elements, and across the 26 features for each global test (q < 0.05)
   - Infant bootstrap 95% Confidence Intervals (as many resamples as permutations)
 Saves M matrices as .npy and summary JSON.
 """
@@ -212,8 +212,9 @@ def run_identifiability(n_permutations: int = 200000, seed: int = 42):
         # FDR correction across elements
         _, q_elem, _, _ = multipletests(p_elem, method="fdr_bh")
         
-        # Bootstrap stats (draws follow n_permutations, so a quick run is quick throughout)
-        boot_stats = infant_identifiability_bootstrap(M, B=n_permutations, seed=1000 + fid_idx)
+        # Bootstrap stats (draws follow n_permutations, so a quick run is quick throughout).
+        # One recorded seed (Step 0 item 8): every feature uses the same infant resamples (Step 7.2 item 4)
+        boot_stats = infant_identifiability_bootstrap(M, B=n_permutations, seed=seed)
         
         feat_res = {
             "fid": fid,
@@ -245,7 +246,14 @@ def run_identifiability(n_permutations: int = 200000, seed: int = 42):
         
         results[fid] = feat_res
         print(f"[{fid_idx:02d}/26] {fid} ({fname[:26]:<26}) | I_self: {I_self:.4f} | I_others: {I_others:.4f} | I_diff: {I_diff:+.2f}% (p={p_idiff:.4f}) | Acc: {acc_mean:.1f}% (Fwd:{acc_forward:.1f}%, Bwd:{acc_backward:.1f}%) | Sig Elements: {feat_res['n_sig_elements']}/{dim}")
-        
+
+    # FDR correction of each global test across the 26 feature sets (Step 7.4 ii)
+    for p_key, q_key in [("p_idiff", "q_idiff"), ("p_acc_forward", "q_acc_forward"), ("p_acc_backward", "q_acc_backward")]:
+        q_global = multipletests([results[fid][p_key] for fid in results], method="fdr_bh")[1]
+        for fid, q_val in zip(results, q_global):
+            results[fid][q_key] = float(q_val)
+    print(f"Global I_diff significant after FDR across 26 features (q < 0.05): {sum(results[fid]['q_idiff'] < 0.05 for fid in results)}/26")
+
     out_json = OUTPUT_TENSORS_DIR / "identifiability_results.json"
     with open(out_json, "w") as f:
         json.dump(results, f, indent=2)

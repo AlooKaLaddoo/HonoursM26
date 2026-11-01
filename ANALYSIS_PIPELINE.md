@@ -508,6 +508,8 @@ flowchart TD
      $$I_{\text{diff}}(e) = \big(I_{\text{self}}(e) - I_{\text{others}}(e)\big) \times 100$$
      Undefined (0/0) cells are skipped in these averages.
 
+  5. **Significance:** $I_{\text{diff}}$ and both accuracies are tested with the column permutation test of Phase 7, and $I_{\text{diff}}(e)$ with the same permutations, one element at a time. The element p-values are FDR-corrected across the elements of each feature (`q_elem`). The three global p-values are FDR-corrected across the 26 feature sets (`q_idiff`, `q_acc_forward`, `q_acc_backward`). Applied to the 27 Oct run, this leaves only f21 (theta weighted correlation) with a significant $I_{\text{diff}}$ ($q = 0.033$), down from 8 features with $p < 0.05$ before correction.
+
      **Where these are used later:** $I_{\text{diff}}(e)$ and its FDR-corrected q-value (from the element-wise permutation test, Phase 7) give the individuality axis and the quadrant classes of Phase 5a; they are reported for every element in Table T2 and drawn on the scalp maps of Figure 4. The element matrices $M_e$ are saved as `M_elem_{fid}.npy`.
 
 ---
@@ -565,42 +567,45 @@ It is done separately for every element, on the raw epoch values $x_{a, s, k}(e)
 * **Transformation.** The 456 values of an element are ranked (tied values share their average rank), each rank is turned into a probability $(\text{rank} - 0.5)/456$, and that probability is converted into the matching value of a standard normal distribution.
 * **Model.** Fitted with `statsmodels` `MixedLM`, using restricted maximum likelihood (REML) with at most 200 iterations. The formula is `y ~ 1`; infants are the groups, each with its own random intercept ($u_a$), and session is a variance component inside each infant ($v_{a,s}$). $\sigma^2_u$ is the random-intercept variance, $\sigma^2_v$ the session variance component, and $\sigma^2_\varepsilon$ the residual variance. The age-adjusted model uses `y ~ age_c` with the same random parts.
 * **Skipped elements.** An element whose 456 values are all identical gets no estimate. The five binary adjacency features (f10, f20, f22, f24, f26) are skipped entirely, because their values are only 0 or 1, which this model is not suited to.
-* **Convergence.** Proportions are stored even when the fitting procedure did not fully converge; the `converged` flag in Table T3 marks those elements, and their numbers should be treated with caution.
+* **Convergence.** A model fit that does not converge, or that fails with an error, is recorded as `NaN`: its three proportions are left out rather than stored as partial estimates. The two models are tracked separately (`converged_unadj` and `converged_adj`), so a failure in the age-adjusted model does not remove a good unadjusted result. The number of non-converged fits is saved for every feature (`n_nonconverged_unadj`, `n_nonconverged_adj`) and printed in the log. The summary averages, Figure 6 and Table T3 therefore use converged fits only.
+* **Parallel fitting.** The elements of a feature are fitted in parallel across `--workers` processes. This only changes the speed, not the results.
 
-**Results so far** (run of 27 Oct 2026). Phase 5b uses only the feature values, so these numbers are current; the Phase 5a quadrant counts depend on the Phase 2 q-values and will change after the next full rerun. The table gives, for each feature, the median over its elements of each proportion (without the age term), and how many element models converged:
+**Results so far** (27 Oct 2026 feature values, with non-converged fits recorded as `NaN`). Phase 5b uses only the feature values, so these numbers are current; the Phase 5a quadrant counts depend on the Phase 2 q-values and will change after the next full rerun. The table gives, for each feature, the median over its converged elements of each proportion (without the age term), and how many element models converged without and with the age term:
 
-| Feature | Trait (infant) | Session | State (epoch) | Converged |
-| :---: | :---: | :---: | :---: | :---: |
-| f01 | 0.037 | 0.257 | 0.682 | 143/171 |
-| f02 | 0.005 | 0.131 | 0.845 | 11/19 |
-| f03 | 0.030 | 0.078 | 0.859 | 93/171 |
-| f04 | 0.081 | 0.244 | 0.680 | 19/19 |
-| f05 | 0.039 | 0.216 | 0.722 | 152/171 |
-| f06 | 0.158 | 0.234 | 0.646 | 18/19 |
-| f07 | 0.050 | 0.253 | 0.656 | 154/171 |
-| f08 | 0.040 | 0.264 | 0.691 | 16/19 |
-| f09 | 0.036 | 0.281 | 0.671 | 171/171 |
-| f11 | 0.017 | 0.096 | 0.877 | 9/19 |
-| f12 | 0.014 | 0.088 | 0.872 | 107/171 |
-| f13 | 0.028 | 0.112 | 0.815 | 14/19 |
-| f14 | 0.018 | 0.110 | 0.830 | 108/171 |
-| f15 | 0.069 | 0.153 | 0.782 | 16/19 |
-| f16 | 0.016 | 0.120 | 0.825 | 114/171 |
-| f17 | 0.007 | 0.110 | 0.861 | 12/19 |
-| f18 | 0.017 | 0.084 | 0.870 | 104/171 |
-| f19 | 0.036 | 0.249 | 0.696 | 145/171 |
-| f21 | 0.045 | 0.182 | 0.752 | 126/171 |
-| f23 | 0.012 | 0.248 | 0.709 | 142/171 |
-| f25 | 0.052 | 0.607 | 0.338 | 171/171 |
-| f10, f20, f22, f24, f26 | – | – | – | skipped (binary) |
+| Feature | Trait (infant) | Session | State (epoch) | Converged | Converged (age-adjusted) |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| f01 | 0.037 | 0.287 | 0.659 | 145/171 | 162/171 |
+| f02 | 0.002 | 0.136 | 0.857 | 16/19 | 12/19 |
+| f03 | 0.019 | 0.092 | 0.874 | 114/171 | 126/171 |
+| f04 | 0.081 | 0.244 | 0.680 | 19/19 | 19/19 |
+| f05 | 0.044 | 0.216 | 0.721 | 158/171 | 158/171 |
+| f06 | 0.162 | 0.223 | 0.648 | 18/19 | 19/19 |
+| f07 | 0.053 | 0.252 | 0.656 | 162/171 | 161/171 |
+| f08 | 0.040 | 0.269 | 0.685 | 18/19 | 17/19 |
+| f09 | 0.036 | 0.281 | 0.671 | 171/171 | 171/171 |
+| f11 | 0.017 | 0.074 | 0.895 | 11/19 | 13/19 |
+| f12 | 0.010 | 0.092 | 0.880 | 126/171 | 136/171 |
+| f13 | 0.067 | 0.103 | 0.808 | 15/19 | 17/19 |
+| f14 | 0.015 | 0.114 | 0.835 | 132/171 | 133/171 |
+| f15 | 0.071 | 0.150 | 0.789 | 18/19 | 17/19 |
+| f16 | 0.012 | 0.135 | 0.828 | 127/171 | 144/171 |
+| f17 | 0.007 | 0.113 | 0.865 | 12/19 | 14/19 |
+| f18 | 0.013 | 0.097 | 0.866 | 129/171 | 129/171 |
+| f19 | 0.033 | 0.264 | 0.687 | 150/171 | 155/171 |
+| f21 | 0.038 | 0.237 | 0.726 | 141/171 | 144/171 |
+| f23 | 0.013 | 0.255 | 0.698 | 151/171 | 155/171 |
+| f25 | 0.052 | 0.607 | 0.338 | 171/171 | 171/171 |
+| f10, f20, f22, f24, f26 | – | – | – | skipped (binary) | skipped (binary) |
+
+Over all features, 371 of the 2,375 unadjusted fits and 302 of the 2,375 age-adjusted fits did not converge.
 
 What this shows:
 
-* **Most of the variation is moment-to-moment.** Over all elements, the median shares are 2.9% trait, 19.2% session and 75.5% state: a single epoch's value mostly reflects the infant's state in that moment.
-* **The stable infant-specific (trait) share is small** at the level of single-epoch values. It is largest for node eigenvector centrality (f06, median 15.8%) and node strength (f04, 8.1%).
+* **Most of the variation is moment-to-moment.** Over all converged elements, the median shares are 2.8% trait, 21.5% session and 73.4% state: a single epoch's value mostly reflects the infant's state in that moment.
+* **The stable infant-specific (trait) share is small** at the level of single-epoch values. It is largest for node eigenvector centrality (f06, median 16.2%) and node strength (f04, 8.1%).
 * **The session share is largest for the beta band** (f25, 60.7%): beta-band connectivity differs strongly between the two visits.
-* **Adding age changes little for most features**: the age-adjusted medians move by about 3 percentage points or less (Table T3). The exception is f25, where the session share drops from 60.7% to 53.4% and the trait share rises from 5.2% to 10.7%.
-* **Convergence is incomplete** for many binary measures, e.g. node betweenness (f02 11/19, f11 9/19), so their proportions are less reliable.
+* **Adding age changes little for most features**: the age-adjusted medians move by about 4 percentage points or less (Table T3). The exception is f25, where the session share drops from 60.7% to 53.4% and the trait share rises from 5.2% to 10.7%.
+* **Convergence is incomplete** for many binary measures, e.g. binary node betweenness (f11 11/19) and binary node closeness (f17 12/19), and for weighted edge betweenness (f03 114/171), so their medians rest on fewer elements and are less reliable.
 
 ---
 
@@ -665,10 +670,11 @@ These are the rules for deciding whether a result is real or could be due to cha
 | Phase 2, $U_s(e)$ and $U_s$ | Element-shuffle permutation test | For each pair, shuffle infant $b$'s element labels (same shuffle for its 12 windows, a new shuffle for each pair); recompute $U_s(e)$ (epochs averaged first, then pairs, as for the real value) and $U_s$. One-sided $p = (1 + \text{count}(\text{null} \ge \text{obs}))/(1 + B)$. An element with no defined real value gets $p = 1$. The shuffles are split across `--workers` processes, each with its own seed ($1000 + 37 \times$ worker number), so the exact p-values depend on the number of workers. |
 | Phase 2, $\Delta U$ | Paired pair-bootstrap | See Phase 6, item 1. Seed 999. |
 | Phase 3, $W_s$, $O_s$, $W_s - O_s$ | Ordinary bootstrap of the 19 per-infant values | Per resample: the mean of 19 values drawn with replacement. One-sided p for $W_s(a) - O_s(a) > 0$: the share of resampled means $\le 0$, never below $1/B$. Seeds 100–500 $+$ session. |
-| Phase 4, $I_{\text{self}}$, $I_{\text{others}}$, $I_{\text{diff}}$ | Infant bootstrap of $M$ | Per resample: $I_{\text{self}}$ = mean of $M[d, d]$ over the drawn infants; $I_{\text{others}}$ = mean of $M[d_p, d_q]$ over off-diagonal positions with $d_p \ne d_q$; $I_{\text{diff}}$ from these two. 95% percentile CIs for all three. Seed $1000 + $ feature number. |
+| Phase 4, $I_{\text{self}}$, $I_{\text{others}}$, $I_{\text{diff}}$ | Infant bootstrap of $M$ | Per resample: $I_{\text{self}}$ = mean of $M[d, d]$ over the drawn infants; $I_{\text{others}}$ = mean of $M[d_p, d_q]$ over off-diagonal positions with $d_p \ne d_q$; $I_{\text{diff}}$ from these two. 95% percentile CIs for all three. Seed 42, the same as the permutation test, so every feature uses the same infant resamples. |
 | Phase 4, $I_{\text{diff}}$, accuracy, $I_{\text{diff}}(e)$ | Column permutation of $M$ | Per permutation: shuffle the 19 columns; recompute $I_{\text{diff}}$, the forward and backward accuracy (ties count as wrong) and every $I_{\text{diff}}(e)$ with the same shuffle. One-sided p as above. Elements with $I_{\text{diff}}(e) \le 0$ or undefined get $p = 1$, since they cannot show "more like oneself". Seed 42. |
 | Phase 6, Spearman and Mantel | Permutation of gaps / infant labels | Two-sided p: count of $\lvert \rho_{\text{null}} \rvert \ge \lvert \rho_{\text{obs}} \rvert$. |
-| Phases 2 and 4, elements | Benjamini–Hochberg FDR | Applied across the elements **of each feature separately**, at $q < 0.05$. The rule box above says "across elements and feature sets"; correcting across all features together is not implemented yet (Section 8). |
+| Phases 2 and 4, elements | Benjamini–Hochberg FDR | Applied across the elements **of each feature separately**, at $q < 0.05$. |
+| Phase 4, global tests | Benjamini–Hochberg FDR | The p-values of $I_{\text{diff}}$, forward accuracy and backward accuracy are each corrected across the 26 feature sets, at $q < 0.05$ (`q_idiff`, `q_acc_forward`, `q_acc_backward`). The global tests of Phases 2 and 3 are not yet corrected across feature sets (Section 8). |
 
 The number of permutations and of bootstrap resamples ($B$) is set by `--permutations` in `run_full_analysis.py` (default 200,000) and is the same for Phases 2, 3, 4 and 6.
 
@@ -719,7 +725,7 @@ Each check is run on a subset of features and compared with that feature's main 
 
 * **Table T1 (Global Summary):** 26 rows, one per feature set. Columns: $U_1, U_2, \Delta U, W_1, W_2, I_{\text{self}}, I_{\text{others}}, I_{\text{diff}}$, accuracy (forward, backward and their mean), and the Mantel $\rho$ for `ses-1` and `ses-2`. Values are reported as mean $\pm$ SD (average ± standard deviation), median [95% CI] (from the bootstrap) and FDR-corrected $q$-values.
 * **Table T2 (Element Results):** one row per element of every feature (feature × element, 3,230 rows in total). Columns: label (electrode or pair name), region, hemisphere (left, right or midline), within/between-region flag (whether a link joins two electrodes in the same region), Euclidean distance (straight-line distance between the two electrodes), $U_1(e), U_2(e), W(e), I_{\text{diff}}(e)$, raw $p$, FDR $q$, taxonomy class (Phase 5a) and the fraction of $0/0$ instances.
-* **Table T3 (Variance Partition):** feature × element. The proportions of infant (trait), session and epoch (state) variance, without and with the age term, plus model convergence flags (whether each model fit finished successfully).
+* **Table T3 (Variance Partition):** feature × element. The proportions of infant (trait), session and epoch (state) variance, without and with the age term, plus model convergence flags (whether each model fit finished successfully). Proportions from fits that did not converge are shown as `NaN`.
 * **Table T4 (Robustness Summary):** check × feature. The main metrics under each of the 9 sensitivity analyses.
 * **Table T5 (Bookkeeping):** the completed subject metadata table (Section 2.2).
 * **Table T6 (Twin / Sibling Analysis):** 26 rows, one per feature set, summarising all twin comparisons.
@@ -782,7 +788,7 @@ The intermediate arrays are stored in `processed_tensors/` as `.npy` files, toge
 | Volume conduction check (dwPLI) | Does not use MNE-Connectivity yet; must be re-implemented following its documentation. | Phase 8, check 7 |
 | Average reference check | Needs review with literature backing before use. | Phase 8, check 6 |
 | Element-level $\Delta U(e)$ | Reported without a statistical test; bootstrap and FDR still to be implemented. | Phase 6, item 1 |
-| FDR scope | Applied within each feature; the rules say across elements and feature sets. | Phase 7 |
+| FDR scope | Element tests are corrected within each feature, and the Phase 4 global tests across the 26 feature sets. The global tests of Phases 2 and 3 are not yet corrected across feature sets, and Table T1 does not yet show the new Phase 4 q-values. | Phase 7 |
 | Number of permutations | Repeat the permutation tests (Phase 6, and the other permutation tests) with 50,000, 100,000 and 2,000,000 permutations, plus intermediate values chosen from the results, and check that p-values and significance stay stable. Not run yet; the current default is 200,000. | Phases 6 and 7 |
 | Epoch length | Two recordings (`sub-NORB00089` and `sub-NORB00103`, `ses-1`) have annotated windows longer than 2.56 s (up to 4.4 s and 5.4 s), which are used at full length. | Section 2.1, Phase 1 |
 | Alpha (and other) sub-bands | Future analysis of sub-bands such as $\alpha_1$, $\alpha_2$. | Section 3.2 |

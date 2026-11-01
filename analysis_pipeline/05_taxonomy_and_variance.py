@@ -5,6 +5,7 @@ Computes:
   - 5b: Three-way Variance Partitioning (Infant/Trait, Session/Development, Epoch/State)
         using Linear Mixed-Effects Models on rank-based inverse-normal transformed features.
   - Age-adjusted variance decomposition.
+  - Non-converged fits recorded as NaN and counted per feature (Step 5b item 5).
 Outputs Table T2 elements and Table T3 variance partitions.
 """
 import concurrent.futures
@@ -85,9 +86,9 @@ def fit_element_lmm(args):
             "element": label,
             "trait_prop": np.nan, "session_prop": np.nan, "epoch_prop": np.nan,
             "trait_prop_adj": np.nan, "session_prop_adj": np.nan, "epoch_prop_adj": np.nan,
-            "converged": False, "skipped": False
+            "converged": False, "converged_unadj": False, "converged_adj": False, "skipped": False
         }
-        
+
     y_trans = rank_inverse_normal(raw_vals)
     
     df_e = pd.DataFrame(base_records)
@@ -105,8 +106,11 @@ def fit_element_lmm(args):
         p_session = var_session / total_var if total_var > 0 else 0.0
         p_epoch = var_epoch / total_var if total_var > 0 else 0.0
         conv1 = bool(r1.converged)
-    except (np.linalg.LinAlgError, ValueError, IndexError, KeyError, ZeroDivisionError):
+    except Exception:  # any failed fit is recorded as NaN (Step 5b item 5)
         p_infant, p_session, p_epoch, conv1 = np.nan, np.nan, np.nan, False
+    if not conv1:
+        # Non-converged fits are recorded as NaN, not as partial estimates (Step 5b item 5)
+        p_infant, p_session, p_epoch = np.nan, np.nan, np.nan
         
     # Model 2: Age-adjusted: y ~ age_c
     try:
@@ -120,8 +124,10 @@ def fit_element_lmm(args):
         p_session_a = var_session_a / total_var_a if total_var_a > 0 else 0.0
         p_epoch_a = var_epoch_a / total_var_a if total_var_a > 0 else 0.0
         conv2 = bool(r2.converged)
-    except (np.linalg.LinAlgError, ValueError, IndexError, KeyError, ZeroDivisionError):
+    except Exception:  # any failed fit is recorded as NaN (Step 5b item 5)
         p_infant_a, p_session_a, p_epoch_a, conv2 = np.nan, np.nan, np.nan, False
+    if not conv2:
+        p_infant_a, p_session_a, p_epoch_a = np.nan, np.nan, np.nan
         
     return {
         "element": label,
@@ -132,6 +138,8 @@ def fit_element_lmm(args):
         "session_prop_adj": p_session_a,
         "epoch_prop_adj": p_epoch_a,
         "converged": bool(conv1 and conv2),
+        "converged_unadj": conv1,
+        "converged_adj": conv2,
         "skipped": False
     }
 
@@ -237,7 +245,7 @@ def run_taxonomy_and_variance(max_workers: int = 8):
                     "element": labels[e],
                     "trait_prop": np.nan, "session_prop": np.nan, "epoch_prop": np.nan,
                     "trait_prop_adj": np.nan, "session_prop_adj": np.nan, "epoch_prop_adj": np.nan,
-                    "converged": False, "skipped": True
+                    "converged": False, "converged_unadj": False, "converged_adj": False, "skipped": True
                 })
         else:
             tasks = []
@@ -248,23 +256,33 @@ def run_taxonomy_and_variance(max_workers: int = 8):
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                 var_elem_list = list(executor.map(fit_element_lmm, tasks))
                 
+        # Count of non-converged fits per model (Step 5b item 5)
+        n_fitted = 0 if is_binary_adj else dim
+        n_nonconv_unadj = 0 if is_binary_adj else sum(not e["converged_unadj"] for e in var_elem_list)
+        n_nonconv_adj = 0 if is_binary_adj else sum(not e["converged_adj"] for e in var_elem_list)
+
         variance_results[fid] = {
             "fid": fid, "name": fname,
+            "n_fitted": n_fitted,
+            "n_nonconverged_unadj": n_nonconv_unadj,
+            "n_nonconverged_adj": n_nonconv_adj,
             "elements": var_elem_list
         }
-        
-        # Compute summary averages across elements
+
+        # Compute summary averages across elements (converged fits only; the rest are NaN)
         valid_traits = [e["trait_prop"] for e in var_elem_list if not np.isnan(e["trait_prop"])]
         valid_sessions = [e["session_prop"] for e in var_elem_list if not np.isnan(e["session_prop"])]
         valid_epochs = [e["epoch_prop"] for e in var_elem_list if not np.isnan(e["epoch_prop"])]
-        
-        if valid_traits:
+
+        if is_binary_adj:
+            var_str = "Skipped (Binary Adjacency)"
+        elif valid_traits:
             m_trait = np.mean(valid_traits) * 100.0
             m_ses = np.mean(valid_sessions) * 100.0
             m_ep = np.mean(valid_epochs) * 100.0
-            var_str = f"Trait={m_trait:4.1f}%, Session={m_ses:4.1f}%, State={m_ep:4.1f}%"
+            var_str = f"Trait={m_trait:4.1f}%, Session={m_ses:4.1f}%, State={m_ep:4.1f}% | Non-converged: {n_nonconv_unadj}/{dim} (age-adj {n_nonconv_adj}/{dim})"
         else:
-            var_str = "Skipped (Binary Adjacency)"
+            var_str = f"No converged fits | Non-converged: {n_nonconv_unadj}/{dim} (age-adj {n_nonconv_adj}/{dim})"
             
         print(f"[{fid_idx:02d}/26] {fid} ({fname[:25]:<25}) | Taxonomy: Univ={class_counts['Universal']:<3} Indiv={class_counts['Individual']:<2} Both={class_counts['Universal and Individual']:<2} Neither={class_counts['Neither']:<3} | Var: {var_str}")
         
@@ -277,7 +295,10 @@ def run_taxonomy_and_variance(max_workers: int = 8):
     with open(var_file, "w") as f:
         json.dump(variance_results, f, indent=2)
         
+    total_fitted = sum(v["n_fitted"] for v in variance_results.values())
     print("=" * 80)
+    print(f"Non-converged LMM fits recorded as NaN: unadjusted {sum(v['n_nonconverged_unadj'] for v in variance_results.values())}/{total_fitted}, "
+          f"age-adjusted {sum(v['n_nonconverged_adj'] for v in variance_results.values())}/{total_fitted}")
     print("Taxonomy and Variance results successfully computed and saved!")
     print(f"Taxonomy: {tax_file}")
     print(f"Variance: {var_file}")

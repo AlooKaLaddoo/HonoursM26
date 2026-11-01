@@ -38,7 +38,7 @@ def main():
 
     if args.start_phase <= 5:
         mod5 = importlib.import_module("analysis_pipeline.05_taxonomy_and_variance")
-        mod5.run_taxonomy_and_variance()
+        mod5.run_taxonomy_and_variance(max_workers=args.workers)
 
     if args.start_phase <= 6:
         mod6 = importlib.import_module("analysis_pipeline.06_developmental_and_twins")
