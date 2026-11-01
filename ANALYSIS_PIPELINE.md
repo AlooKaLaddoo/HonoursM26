@@ -783,15 +783,16 @@ The checks:
 
 ### 6.2 Figures (Vector PDF Format)
 
-Vector PDFs stay sharp at any zoom; PNG copies are saved as well.
+Vector PDFs stay sharp at any zoom; PNG copies are saved as well. Every number written on a figure is read from the results, and titles describe what is plotted rather than a conclusion. Where a figure shows a few key features, a supplementary file covers all 26 (a grid, or a multi-page PDF with one feature per page). `figures/README.md` lists every file.
 
-* **Figure 1:** heatmaps (colour-coded grids) of the $19 \times 19$ identifiability matrix $M$ for each feature (rows: `ses-1`, columns: `ses-2`, with the diagonal, the same-infant cells, highlighted).
-* **Figure 2:** forest plots showing $U_1, U_2, W_1, W_2, I_{\text{self}}, I_{\text{others}}$ side by side, each as a point with a line showing its 95% bootstrap CI.
-* **Figure 3:** the 2D universality vs. individuality quadrant scatter plots ($U(e)$ against $I_{\text{diff}}(e)$), with coloured regions and the number of elements in each quadrant.
-* **Figure 4:** topographical scalp maps (the head seen from above, coloured at the electrode positions) showing node $I_{\text{diff}}(e)$, and the edge connections that are significant after FDR correction.
-* **Figure 5:** developmental scatter plots: $\Delta U$ for each feature, and $I_{\text{self}}(a)$ (each infant's own $M[a, a]$) against the inter-session interval, highlighting `00064` and `00069`.
-* **Figure 6:** stacked bar charts of the variance decomposition ($\sigma^2_{\text{Subject}}, \sigma^2_{\text{Session}}, \sigma^2_{\text{Epoch}}$) for each feature and region, each bar split into the three parts.
-* **Figure 7:** heatmaps of every element across all 171 pairs, with the pairs sorted by their absolute age difference $|\Delta\text{age}|$; midline electrodes are marked "M".
+* **Figure 1:** heatmaps (colour-coded grids) of the $19 \times 19$ identifiability matrix $M$ (rows: `ses-1`, columns: `ses-2`, infants in the same order, with the diagonal, the same-infant cells, highlighted), each with its own colour scale and colour bar. Six key features in the main figure, all 26 in the supplement; titles give $I_{\text{diff}}$ with its FDR q and the identification accuracy.
+* **Figure 2:** for every feature, $U_1, U_2, W_1, W_2, I_{\text{self}}, I_{\text{others}}$ side by side, each as its estimate with a line showing its 95% infant bootstrap CI.
+* **Figure 3:** the universality–individuality plane of Phase 5a, one point per element at $x = U(e)$, $y = I_{\text{diff}}(e)$. Points are coloured by region (nodes) or region pair (edges), with a circle for within-region and a triangle for between-region edges. The Phase 5a classes are shown by the marker: filled when $U(e)$ is significant at both sessions, with a black ring when $I_{\text{diff}}(e)$ is significant. They come from the FDR-corrected tests, not from where a point lies. Four key features, plus all 26 in the supplement.
+* **Figure 4:** topographical scalp maps (the head seen from above). Node features: every electrode coloured by $I_{\text{diff}}(e)$ on a scale centred on 0 (it can be negative), with FDR-significant electrodes ringed. Edge features: only the edges whose $I_{\text{diff}}(e)$ is FDR-significant ($q < 0.05$) are drawn. Four key features, plus all 26 in the supplement.
+* **Figure 5:** $\Delta U$ for each feature with its CI, coloured by whether its FDR q across features is below 0.05; and each infant's self-similarity $M[a, a]$ against the inter-session interval, labelling `00064` and `00069` with their values and giving the Spearman $\rho$ with p and q.
+* **Figure 6:** stacked bar charts of the variance partition (infant / trait, session, epoch / state), averaged over each feature's elements and, in the supplement, by region or region pair for every modelled feature. Only converged fits are averaged, and the number of fits is shown.
+* **Figure 7:** heatmaps of every element across all 171 infant pairs at `ses-1` and `ses-2`, with the pairs sorted by their absolute age difference $|\Delta\text{age}|$ and the colour scale fixed at 0–1. A strip above each heatmap gives each column's hemispheric category, with midline labelled "M". The twin pair is marked. f01 in the main figure, all 26 features in a multi-page supplement.
+* **Sibling figure** (Phase 6, item 4): for each feature and session, the distribution of the 171 pair similarities with the twin pair and both matched comparison sets marked. f01 in the main figure, all 26 features in a multi-page supplement.
 
 ### 6.3 Data Artifacts
 

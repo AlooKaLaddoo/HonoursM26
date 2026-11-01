@@ -89,7 +89,7 @@ All babies change in similar ways between 3 and 6 months. Subtracting D removes 
 | 6 | `06_developmental_and_twins.py` | Checks how results relate to age and to the time between sessions, and looks at the one twin pair in the group. |
 | 7 | `07_robustness_checks.py` | Repeats the key results with 9 different method choices, one at a time, to make sure they hold up. |
 | 8 | `08_export_tables.py` | Writes the final tables T1–T6. |
-| 9 | `09_generate_figures.py` | Draws the final Figures 1–7. |
+| 9 | `09_generate_figures.py` | Draws the final Figures 1–7 and the twin figure, plus supplements that cover all 26 features. |
 
 ---
 
@@ -127,7 +127,8 @@ HonoursM26/
 │   ├── Figure_4 …                  # Head maps showing which brain areas are most personal
 │   ├── Figure_5 …                  # Changes with age and with time between sessions
 │   ├── Figure_6 …                  # Baby vs. session vs. noise breakdown
-│   └── Figure_7 …                  # Pair-by-pair similarity heatmaps and the twin check
+│   ├── Figure_7 …                  # Pair-by-pair similarity heatmaps and the twin check
+│   └── *_Supplementary_*           # The same figures for all 26 features (some are multi-page PDFs)
 │
 ├── processed_tensors/              # Saved in-between results, so later phases can rerun quickly (374 files)
 │   ├── README.md                   # What every file contains and its shape
