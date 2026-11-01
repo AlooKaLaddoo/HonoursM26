@@ -115,7 +115,8 @@ HonoursM26/
 │   ├── Table_T3_Variance_Partition # Baby vs. session vs. noise breakdown for each node/connection
 │   ├── Table_T4_Robustness         # Main results under each robustness check (one row per check and feature)
 │   ├── Table_T4b_Electrode_Distance # How universality and individuality relate to electrode distance
-│   ├── Table_T5_Bookkeeping        # Ages and recording dates for the 19 infants
+│   ├── Table_T5_Bookkeeping        # Sex, ages, time between visits and epoch counts for the 19 infants
+│   ├── Table_T5b_Threshold_Bookkeeping # Thresholds and number of links of the binary networks, per session
 │   └── Table_T6_Sibling_Analysis   # How similar the twin pair (sub-NORB00086 & 00087) is
 │
 ├── figures/                        # Final figures (each as PDF and PNG)

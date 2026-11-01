@@ -1,19 +1,22 @@
 """
 Phase 8: Export Tables T1 through T6 (CSV & Markdown formats).
 Compiles results from all preceding phases into publication-ready tables:
-  - Table T1: Global Summary (26 features x 18 metrics)
+  - Table T1: Global Summary (26 features; each metric as mean +/- SD, median [95% CI], p and FDR q across features)
   - Table T2: Element Results (3,230 element-level evaluations across features)
   - Table T3: Variance Partition (Three-way LMM variance decomposition & age adjustments)
   - Table T4: Robustness & Sensitivity Checks (one row per check and feature, checks 1-8), and T4b (check 9)
-  - Table T5: Cohort Bookkeeping (Subject ages, windows, twin status, and notes)
+  - Table T5: Cohort Bookkeeping (one row per infant: sex, ages and interval in days, epochs, twin status),
+    and T5b: GCC threshold bookkeeping (tau_c and edge density per network and session)
   - Table T6: Sibling / Twin Analysis (Twin comparisons for sub-NORB00086 & sub-NORB00087)
 """
 import json
 import sys
 from pathlib import Path
 
+import mne
 import numpy as np
 import pandas as pd
+from statsmodels.stats.multitest import multipletests
 
 # Support both direct script execution and package imports
 if __package__ is None or __package__ == "":
@@ -24,13 +27,16 @@ if __package__ is None or __package__ == "":
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        N_EPOCHS,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
+        SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from analysis_pipeline.utils import (
+        build_binary_network,
         get_edge_hemisphere_pair,
         get_node_hemisphere,
         load_annotations,
@@ -40,13 +46,16 @@ else:
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        N_EPOCHS,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
+        SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from .utils import (
+        build_binary_network,
         get_edge_hemisphere_pair,
         get_node_hemisphere,
         load_annotations,
@@ -62,6 +71,57 @@ def df_to_markdown(df: pd.DataFrame) -> str:
         vals = [str(v) if pd.notna(v) else "" for v in row.values]
         lines.append("| " + " | ".join(vals) + " |")
     return "\n".join(lines)
+
+
+# Networks thresholded with the GCC rule: family -> (weighted feature, binary adjacency feature)
+GCC_NETWORKS = {"broadband": ("f01", "f10"), "delta": ("f19", "f20"), "theta": ("f21", "f22"),
+                "alpha": ("f23", "f24"), "beta": ("f25", "f26")}
+TWIN_IDS = ("sub-NORB00086", "sub-NORB00087")
+SHORT_GAP_IDS = ("sub-NORB00064", "sub-NORB00069")  # reported individually in Step 6
+
+
+def fdr_across_features(p_values) -> np.ndarray:
+    """Benjamini-Hochberg q-values of one global test across the feature sets (Step 7.4 ii)."""
+    return np.asarray(multipletests(np.asarray(p_values, dtype=np.float64), method="fdr_bh")[1])
+
+
+def fmt_ci(ci, spec: str = ".4f") -> str:
+    return f"[{ci[0]:{spec}}, {ci[1]:{spec}}]"
+
+
+def gcc_threshold_bookkeeping() -> pd.DataFrame:
+    """
+    Step 0 item 5: tau_c and edge count of every GCC-thresholded network, summarised (min, median, max) per
+    network family and session. tau_c is recomputed from the weighted edge weights with the Phase 1 rule; the
+    recomputed edge counts must equal the saved binary adjacency tensors.
+    """
+    node_idx = {node: i for i, node in enumerate(NODE_LABELS)}
+    edge_uv = [(node_idx[e.split("-")[0]], node_idx[e.split("-")[1]]) for e in EDGE_LABELS]
+    rows = []
+    for family, (w_fid, b_fid) in GCC_NETWORKS.items():
+        W = np.load(OUTPUT_TENSORS_DIR / f"X_{w_fid}.npy")
+        A = np.load(OUTPUT_TENSORS_DIR / f"X_{b_fid}.npy")
+        for s_idx, ses in enumerate(SESSIONS):
+            taus, counts = [], []
+            for a in range(W.shape[0]):
+                for k in range(W.shape[2]):
+                    mat = np.zeros((len(NODE_LABELS), len(NODE_LABELS)))
+                    for e, (u, v) in enumerate(edge_uv):
+                        mat[u, v] = mat[v, u] = W[a, s_idx, k, e]
+                    _bin, tau, count = build_binary_network(pd.DataFrame(mat, index=NODE_LABELS, columns=NODE_LABELS))
+                    if count != int(A[a, s_idx, k].sum()):
+                        raise ValueError(f"Recomputed GCC network differs from X_{b_fid}: infant {a}, {ses}, epoch {k + 1}")
+                    taus.append(tau)
+                    counts.append(count)
+            rows.append({
+                "Network": family, "Session": ses, "Networks": len(taus),
+                "tau_c min": min(taus), "tau_c median": float(np.median(taus)), "tau_c max": max(taus),
+                "Edges min": min(counts), "Edges median": float(np.median(counts)), "Edges max": max(counts),
+                "Density min": round(min(counts) / len(EDGE_LABELS), 4),
+                "Density median": round(float(np.median(counts)) / len(EDGE_LABELS), 4),
+                "Density max": round(max(counts) / len(EDGE_LABELS), 4),
+            })
+    return pd.DataFrame(rows)
 
 
 def get_electrode_3d_distances_dict():
@@ -123,51 +183,74 @@ def export_all_tables():
     # ------------------------------------------------------------------
     # TABLE T1: GLOBAL SUMMARY (26 rows)
     # ------------------------------------------------------------------
+    # Each metric as mean +/- SD (stating what the SD is over), median [95% bootstrap CI], and p with its
+    # FDR q across the 26 feature sets (Step 7.1, 7.4 ii); I_diff is (I_self - I_others) x 100 as in Phase 4
+    p_triu, q_triu = np.triu_indices(len(SUBJECT_IDS), k=1)
     t1_rows = []
     for fid, meta in FEATURE_DEFS.items():
         u = u_res[fid]
         w = w_res[fid]
         ident = i_res[fid]
         dev = dev_res[fid]
-        
-        t1_rows.append({
+        M = np.load(OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy")
+        off = ~np.eye(M.shape[0], dtype=bool)
+        S1 = np.load(OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-1.npy")
+        S2 = np.load(OUTPUT_TENSORS_DIR / f"S_mat_{fid}_ses-2.npy")
+        delta_pairs = S2[p_triu, q_triu] - S1[p_triu, q_triu]
+
+        row = {
             "Feature ID": fid,
             "Feature Name": meta["name"],
             "Network": meta["network"],
             "Type": meta["type"],
             "Dim": meta["dim"],
-            # Universality U_1
-            "U_1 (Mean±SD)": f"{u['ses-1']['U_global']:.4f} ± {u['ses-1']['SD_pairs']:.4f}",
-            "U_1 Median [95% CI]": f"{u['ses-1']['bootstrap']['median']:.4f} [{u['ses-1']['bootstrap']['ci_95'][0]:.4f}, {u['ses-1']['bootstrap']['ci_95'][1]:.4f}]",
-            "U_1 p-val": u['ses-1']['p_global'],
-            # Universality U_2
-            "U_2 (Mean±SD)": f"{u['ses-2']['U_global']:.4f} ± {u['ses-2']['SD_pairs']:.4f}",
-            "U_2 Median [95% CI]": f"{u['ses-2']['bootstrap']['median']:.4f} [{u['ses-2']['bootstrap']['ci_95'][0]:.4f}, {u['ses-2']['bootstrap']['ci_95'][1]:.4f}]",
-            "U_2 p-val": u['ses-2']['p_global'],
-            # Delta U
-            "Delta U": f"{dev['delta_U_global']:+.4f}",
-            "Delta U [95% CI]": f"[{dev['ci_95'][0]:+.4f}, {dev['ci_95'][1]:+.4f}]",
-            "Delta U p-val": dev['p_value'],
-            # Within-session stability W_1 and W_2
-            "W_1": f"{w['ses-1']['W_global']:.4f}",
-            "W_1 [95% CI]": f"[{w['ses-1']['W_bootstrap']['ci_95'][0]:.4f}, {w['ses-1']['W_bootstrap']['ci_95'][1]:.4f}]",
-            "W_2": f"{w['ses-2']['W_global']:.4f}",
-            "W_2 [95% CI]": f"[{w['ses-2']['W_bootstrap']['ci_95'][0]:.4f}, {w['ses-2']['W_bootstrap']['ci_95'][1]:.4f}]",
-            # Identifiability I_self, I_others, I_diff
-            "I_self": f"{ident['I_self']:.4f}",
-            "I_others": f"{ident['I_others']:.4f}",
-            "I_diff (%)": f"{ident['I_diff']:+.2f}",
-            "I_diff [95% CI]": f"[{ident['bootstrap']['idiff_ci_95'][0]:+.2f}, {ident['bootstrap']['idiff_ci_95'][1]:+.2f}]",
-            "I_diff p-val": ident['p_idiff'],
-            # 1-NN Accuracy
-            "Acc Forward (%)": f"{ident['acc_forward']:.1f}",
-            "Acc Backward (%)": f"{ident['acc_backward']:.1f}",
-            "Acc Mean (%)": f"{ident['acc_mean']:.1f}",
-            # Mantel test rho
-            "Mantel rho (ses-1)": f"{dev['mantel_ses1']['rho']:.3f} (p={dev['mantel_ses1']['p']:.4f})",
-            "Mantel rho (ses-2)": f"{dev['mantel_ses2']['rho']:.3f} (p={dev['mantel_ses2']['p']:.4f})"
-        })
+        }
+        # Universality U_1, U_2 (SD over the 171 infant pairs)
+        for s in (1, 2):
+            us = u[f"ses-{s}"]
+            row[f"U_{s} Mean ± SD (171 pairs)"] = f"{us['U_global']:.4f} ± {us['SD_pairs']:.4f}"
+            row[f"U_{s} Median [95% CI]"] = f"{us['bootstrap']['median']:.4f} {fmt_ci(us['bootstrap']['ci_95'])}"
+            row[f"U_{s} p"] = us["p_global"]
+        # Delta U (SD of S_2 - S_1 over the 171 infant pairs)
+        row["Delta U Mean ± SD (171 pairs)"] = f"{dev['delta_U_global']:+.4f} ± {np.std(delta_pairs):.4f}"
+        row["Delta U Median [95% CI]"] = f"{dev['median_delta']:+.4f} {fmt_ci(dev['ci_95'], '+.4f')}"
+        row["Delta U p"] = dev["p_value"]
+        # Within-session stability W_1, W_2 (SD over the 19 infants); p tests W - O > 0 (Step 3)
+        for s in (1, 2):
+            ws = w[f"ses-{s}"]
+            wb = ws["W_bootstrap"]
+            row[f"W_{s} Mean ± SD (19 infants)"] = f"{ws['W_global']:.4f} ± {wb['sd']:.4f}"
+            row[f"W_{s} Median [95% CI]"] = f"{wb['median']:.4f} {fmt_ci(wb['ci_95'])}"
+            row[f"W_{s} - O_{s} p"] = ws["diff_within_p"]
+        # Identifiability (SD over the 19 diagonal cells, the 342 off-diagonal cells, and the 19 idiff(a))
+        row["I_self Mean ± SD (19 infants)"] = f"{ident['I_self']:.4f} ± {np.std(np.diag(M)):.4f}"
+        row["I_self [95% CI]"] = fmt_ci(ident["bootstrap"]["self_ci_95"])
+        row["I_others Mean ± SD (342 cells)"] = f"{ident['I_others']:.4f} ± {np.std(M[off]):.4f}"
+        row["I_others [95% CI]"] = fmt_ci(ident["bootstrap"]["others_ci_95"])
+        row["I_diff x100 Mean ± SD (19 infants)"] = f"{ident['I_diff']:+.2f} ± {np.std(ident['per_infant_idiff']):.2f}"
+        row["I_diff x100 Median [95% CI]"] = f"{ident['bootstrap']['idiff_median']:+.2f} {fmt_ci(ident['bootstrap']['idiff_ci_95'], '+.2f')}"
+        row["I_diff p"] = ident["p_idiff"]
+        # 1-NN identification accuracy (permutation p; accuracy is not bootstrapped, Step 7.2 item 5)
+        row["Acc Forward (%)"] = round(ident["acc_forward"], 1)
+        row["Acc Forward p"] = ident["p_acc_forward"]
+        row["Acc Backward (%)"] = round(ident["acc_backward"], 1)
+        row["Acc Backward p"] = ident["p_acc_backward"]
+        row["Acc Mean (%)"] = round(ident["acc_mean"], 1)
+        # Mantel test: similarity vs age difference, per session
+        for s in (1, 2):
+            row[f"Mantel rho ses-{s}"] = round(dev[f"mantel_ses{s}"]["rho"], 4)
+            row[f"Mantel ses-{s} p"] = dev[f"mantel_ses{s}"]["p"]
+        t1_rows.append(row)
     df_t1 = pd.DataFrame(t1_rows)
+    # FDR q next to every p column, across the 26 feature sets
+    t1_cols = []
+    for col in df_t1.columns:
+        t1_cols.append(col)
+        if col.endswith(" p"):
+            q_col = col[:-2] + " q"
+            df_t1[q_col] = fdr_across_features(df_t1[col])
+            t1_cols.append(q_col)
+    df_t1 = df_t1[t1_cols]
     df_t1.to_csv(TABLES_DIR / "Table_T1_Global_Summary.csv", index=False)
     (TABLES_DIR / "Table_T1_Global_Summary.md").write_text(df_to_markdown(df_t1))
     print(f" -> Table T1 saved: {TABLES_DIR / 'Table_T1_Global_Summary.csv'} (.csv & .md)")
@@ -211,12 +294,16 @@ def export_all_tables():
                 "Connection Type": wb_flag,
                 "Euclidean Distance (mm)": e_dist,
                 "U_1(e)": round(u["ses-1"]["U_elem"][e], 4),
+                "p_raw_U_1": round(u["ses-1"]["p_elem"][e], 6),
+                "q_fdr_U_1": round(u["ses-1"]["q_elem"][e], 6),
                 "U_2(e)": round(u["ses-2"]["U_elem"][e], 4),
+                "p_raw_U_2": round(u["ses-2"]["p_elem"][e], 6),
+                "q_fdr_U_2": round(u["ses-2"]["q_elem"][e], 6),
                 "W_1(e)": round(w["ses-1"]["W_elem"][e], 4),
                 "W_2(e)": round(w["ses-2"]["W_elem"][e], 4),
                 "I_diff(e) (%)": round(ident["I_diff_elem"][e], 2),
-                "p_raw_idiff": round(ident["p_elem"][e], 4),
-                "q_fdr_idiff": round(ident["q_elem"][e], 4),
+                "p_raw_idiff": round(ident["p_elem"][e], 6),
+                "q_fdr_idiff": round(ident["q_elem"][e], 6),
                 "Taxonomy Class": tax["classes"][e],
                 "Undefined (0/0) Frac ses-1": round(u["ses-1"]["undef_frac"][e], 4),
                 "Undefined (0/0) Frac ses-2": round(u["ses-2"]["undef_frac"][e], 4)
@@ -242,7 +329,9 @@ def export_all_tables():
                 "Age-Adjusted Infant Prop": round(elem_dict["trait_prop_adj"], 4) if not np.isnan(elem_dict["trait_prop_adj"]) else "NaN",
                 "Age-Adjusted Session Prop": round(elem_dict["session_prop_adj"], 4) if not np.isnan(elem_dict["session_prop_adj"]) else "NaN",
                 "Age-Adjusted Epoch Prop": round(elem_dict["epoch_prop_adj"], 4) if not np.isnan(elem_dict["epoch_prop_adj"]) else "NaN",
-                "Model Converged": elem_dict["converged"],
+                # One flag per model (Phase 5); results saved before that change only have the combined flag
+                "Converged (unadjusted)": elem_dict.get("converged_unadj", elem_dict["converged"]),
+                "Converged (age-adjusted)": elem_dict.get("converged_adj", elem_dict["converged"]),
                 "Skipped Binary Adjacency": elem_dict["skipped"]
             })
     df_t3 = pd.DataFrame(t3_rows)
@@ -262,34 +351,51 @@ def export_all_tables():
             print(f" -> {name} missing; please run Phase 7 first.")
 
     # ------------------------------------------------------------------
-    # TABLE T5: SUBJECT BOOKKEEPING (19 rows)
+    # TABLE T5: SUBJECT BOOKKEEPING (19 rows, Step 0 item 6)
     # ------------------------------------------------------------------
+    participants = pd.read_csv(DATASET_PATH / "participants.tsv", sep="\t").set_index("participant_id")
     t5_rows = []
     for subj in SUBJECT_IDS:
-        s1_file = DATASET_PATH / subj / "ses-1" / f"{subj}_ses-1_scans.tsv"
-        s2_file = DATASET_PATH / subj / "ses-2" / f"{subj}_ses-2_scans.tsv"
-        a1 = float(pd.read_csv(s1_file, sep="\t")["age_acq_time"].iloc[0])
-        a2 = float(pd.read_csv(s2_file, sep="\t")["age_acq_time"].iloc[0])
-        gap_mo = (a2 - a1) * 12.0
+        ages_days = {}
+        annotated, usable = {}, {}
+        for ses in SESSIONS:
+            scans = pd.read_csv(DATASET_PATH / subj / ses / f"{subj}_{ses}_scans.tsv", sep="\t")
+            ages_days[ses] = float(scans["age_acq_time"].iloc[0]) * 365.25
+            ann_df = load_annotations(subj, ses)
+            annotated[ses] = len(ann_df) if ann_df is not None else 0
+            # Usable epochs: annotated windows that lie inside the recording (same rule as segment_eeg_from_annotations)
+            edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
+            raw = mne.io.read_raw_edf(edf_path, preload=False, verbose=False)
+            sfreq, n_times = float(raw.info["sfreq"]), raw.n_times
+            if ann_df is None:
+                usable[ses] = 0
+            else:
+                onsets = ann_df["onset"].to_numpy(dtype=np.float64)
+                starts = (onsets * sfreq).astype(int)
+                ends = ((onsets + ann_df["duration"].to_numpy(dtype=np.float64)) * sfreq).astype(int)
+                usable[ses] = int(np.sum((starts >= 0) & (starts <= ends) & (ends <= n_times)))
+        gap_days = ages_days["ses-2"] - ages_days["ses-1"]
         
-        ann1_df = load_annotations(subj, "ses-1")
-        ann2_df = load_annotations(subj, "ses-2")
-        ann1 = len(ann1_df) if ann1_df is not None else 0
-        ann2 = len(ann2_df) if ann2_df is not None else 0
-        
-        twin_str = "Twin A" if subj == "sub-NORB00086" else ("Twin B" if subj == "sub-NORB00087" else "Singleton")
-        note = "Brother of 00087 (male twin)" if subj == "sub-NORB00086" else ("Brother of 00086 (male twin)" if subj == "sub-NORB00087" else ("Short gap: 4 days" if subj == "sub-NORB00064" else ""))
+        if subj in TWIN_IDS:
+            sibling = TWIN_IDS[1] if subj == TWIN_IDS[0] else TWIN_IDS[0]
+            status = "Twin A" if subj == TWIN_IDS[0] else "Twin B"
+            note = f"Twin of {sibling}; flagged in all outputs, excluded in robustness check 4"
+        else:
+            status = "Singleton"
+            note = f"Short inter-session gap ({gap_days:.0f} days), reported individually in Step 6" if subj in SHORT_GAP_IDS else ""
         
         t5_rows.append({
             "Participant ID": subj,
-            "Sex": "Male" if subj in ("sub-NORB00086", "sub-NORB00087") else ("Female" if subj in ("sub-NORB00064", "sub-NORB00069", "sub-NORB00072", "sub-NORB00078", "sub-NORB00081", "sub-NORB00088", "sub-NORB00091", "sub-NORB00092", "sub-NORB00096", "sub-NORB00101", "sub-NORB00102") else "Male"),
-            "Age ses-1 (yr)": round(a1, 4),
-            "Age ses-2 (yr)": round(a2, 4),
-            "Gap (months)": round(gap_mo, 2),
-            "Gap (days)": round((a2 - a1) * 365.25, 1),
-            "Windows ses-1": ann1,
-            "Windows ses-2": ann2,
-            "Status": twin_str,
+            "Sex": participants.loc[subj, "sex"],
+            "Age ses-1 (days)": round(ages_days["ses-1"], 1),
+            "Age ses-2 (days)": round(ages_days["ses-2"], 1),
+            "Interval (days)": round(gap_days, 1),
+            "Annotated epochs ses-1": annotated["ses-1"],
+            "Usable epochs ses-1": usable["ses-1"],
+            "Annotated epochs ses-2": annotated["ses-2"],
+            "Usable epochs ses-2": usable["ses-2"],
+            "Epochs used per session": N_EPOCHS,
+            "Status": status,
             "Notes": note
         })
     df_t5 = pd.DataFrame(t5_rows)
@@ -298,40 +404,72 @@ def export_all_tables():
     print(f" -> Table T5 saved: {TABLES_DIR / 'Table_T5_Bookkeeping.csv'} (.csv & .md)")
     
     # ------------------------------------------------------------------
-    # TABLE T6: SIBLING / TWIN ANALYSIS (26 rows)
+    # TABLE T5b: GCC THRESHOLD BOOKKEEPING (network family x session, Step 0 item 5)
     # ------------------------------------------------------------------
+    df_t5b = gcc_threshold_bookkeeping()
+    df_t5b.to_csv(TABLES_DIR / "Table_T5b_Threshold_Bookkeeping.csv", index=False)
+    (TABLES_DIR / "Table_T5b_Threshold_Bookkeeping.md").write_text(df_to_markdown(df_t5b))
+    print(f" -> Table T5b saved: {TABLES_DIR / 'Table_T5b_Threshold_Bookkeeping.csv'} (.csv & .md)")
+    
+    # ------------------------------------------------------------------
+    # TABLE T6: SIBLING / TWIN ANALYSIS (26 rows, all values of the Step 6 sibling analysis)
+    # ------------------------------------------------------------------
+    def set_str(summary):
+        """Median [min, max] of a matched comparison set."""
+        if summary is None or summary.get("n", 0) == 0:
+            return "n/a"
+        return f"{summary['median']:.4f} [{summary['min']:.4f}, {summary['max']:.4f}] (n = {summary['n']})"
+    
+    def rank_or_na(value, digits=1):
+        return "N/A" if value is None or np.isnan(value) else round(value, digits)
+    
     t6_rows = []
     for fid, meta in FEATURE_DEFS.items():
         tw = twin_res[fid]
         c = tw["cross_identification"]
-        mis_str = "None"
-        if c["misidentified_86_as_87"] and c["misidentified_87_as_86"]:
-            mis_str = "Both"
-        elif c["misidentified_86_as_87"]:
-            mis_str = "86 -> 87"
-        elif c["misidentified_87_as_86"]:
-            mis_str = "87 -> 86"
+        # Which sibling is identified as the other, and in which direction (row: ses-1 -> ses-2, column: ses-2 -> ses-1)
+        directions = []
+        for who, other in (("86", "87"), ("87", "86")):
+            key = f"misidentified_{who}_as_{other}"
+            if f"{key}_fwd" in c:
+                directions += [f"{who} as {other} ({d})" for d, flag in (("forward", c[f"{key}_fwd"]), ("backward", c[f"{key}_bwd"])) if flag]
+            elif c[key]:  # results saved before both directions were checked
+                directions.append(f"{who} as {other} (forward)")
+        shared_classes = tw.get("shared_element_classes")
+        if shared_classes is not None:
+            shared_str = ", ".join(f"{label} ({cls})" for label, cls in shared_classes.items()) or "None"
+        else:
+            shared_str = ", ".join(tw["shared_elements"]) or "None"
             
         t6_rows.append({
             "Feature ID": fid,
             "Feature Name": meta["name"],
             "Twin Similarity ses-1": round(tw["ses1_similarity"], 4),
             "Twin Similarity ses-2": round(tw["ses2_similarity"], 4),
-            "Percentile Rank ses-1 (/171)": round(tw["rank_among_171_ses1"], 1),
-            "Percentile Rank ses-2 (/171)": round(tw["rank_among_171_ses2"], 1),
-            "Matched Infant Rank ses-1": round(tw["rank_matched_infant_ses1"], 1),
-            "Matched Infant Rank ses-2": round(tw["rank_matched_infant_ses2"], 1),
-            "Matched Age Rank ses-1": round(tw["rank_matched_age_ses1"], 1) if not np.isnan(tw.get("rank_matched_age_ses1", np.nan)) else "N/A",
-            "Matched Age Rank ses-2": round(tw["rank_matched_age_ses2"], 1) if not np.isnan(tw.get("rank_matched_age_ses2", np.nan)) else "N/A",
+            "Percentile Rank ses-1 (/171)": rank_or_na(tw["rank_among_171_ses1"]),
+            "Percentile Rank ses-2 (/171)": rank_or_na(tw["rank_among_171_ses2"]),
+            "Matched Infant Rank ses-1": rank_or_na(tw["rank_matched_infant_ses1"]),
+            "Matched Infant Set ses-1 Median [Range]": set_str(tw.get("matched_infant_set_ses1")),
+            "Matched Infant Rank ses-2": rank_or_na(tw["rank_matched_infant_ses2"]),
+            "Matched Infant Set ses-2 Median [Range]": set_str(tw.get("matched_infant_set_ses2")),
+            "Matched Age Rank ses-1": rank_or_na(tw.get("rank_matched_age_ses1", np.nan)),
+            "Matched Age Set ses-1 Median [Range]": set_str(tw.get("matched_age_set_ses1")),
+            "Matched Age Rank ses-2": rank_or_na(tw.get("rank_matched_age_ses2", np.nan)),
+            "Matched Age Set ses-2 Median [Range]": set_str(tw.get("matched_age_set_ses2")),
             "M[86, 86] Self": round(c["M_86_86"], 4),
             "M[87, 87] Self": round(c["M_87_87"], 4),
             "M[86, 87] Cross": round(c["M_86_87"], 4),
             "M[87, 86] Cross": round(c["M_87_86"], 4),
-            "86 Cross-Rank in Row": c["rank_87_for_86"],
-            "87 Cross-Rank in Row": c["rank_86_for_87"],
-            "Misidentified?": mis_str,
+            "M[86, 87] Rank in Row 86": c["rank_87_for_86"],
+            "M[86, 87] Rank in Column 87": c["rank_87_in_col"],
+            "M[87, 86] Rank in Row 87": c["rank_86_for_87"],
+            "M[87, 86] Rank in Column 86": c["rank_86_in_col"],
+            "Identified as the Other Sibling": "; ".join(directions) or "None",
+            "Elements Where Either Is Identified as the Other": tw.get("n_elements_misidentified", "n/a"),
             "Shared P95 Elements Count": tw["n_shared_p95_elements"],
-            "Shared P95 Elements": ", ".join(tw["shared_elements"]) if tw["shared_elements"] else "None"
+            "Shared P95 Individual Elements": tw.get("n_shared_individual_elements", "n/a"),
+            "Shared P95 Elements (Class)": shared_str,
+            "Same-Day Control": tw.get("same_day_control", "n/a")
         })
     df_t6 = pd.DataFrame(t6_rows)
     df_t6.to_csv(TABLES_DIR / "Table_T6_Sibling_Analysis.csv", index=False)

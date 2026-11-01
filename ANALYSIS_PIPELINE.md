@@ -251,6 +251,23 @@ How to read the table: ages are in months (mo) at each visit; the *inter-session
 | `sub-NORB00096` | M | 2.73 | 6.00 | 3.27 | 20 | 20 | Singleton |
 | `sub-NORB00103` | F | 2.89 | 6.28 | 3.39 | 35 | 20 | Singleton |
 
+The exported `Table_T5_Bookkeeping.csv` holds the same information with ages and the interval in days (as the specification asks), and lists annotated and usable epochs separately.
+
+**GCC threshold bookkeeping (Table T5b, Step 0, item 5).** For every binary network built with the GCC rule (12 windows × 19 infants = 228 networks per session and family), the threshold $\tau_c$ and the number of links kept (density = links / 171):
+
+| Network | Session | $\tau_c$ min / median / max | Links min / median / max | Density min / median / max |
+| :--- | :---: | :---: | :---: | :---: |
+| Broadband | `ses-1` | 0.25 / 0.50 / 0.90 | 29 / 59 / 145 | 0.170 / 0.345 / 0.848 |
+| Broadband | `ses-2` | 0.25 / 0.55 / 0.90 | 27 / 57.5 / 145 | 0.158 / 0.336 / 0.848 |
+| Delta | `ses-1` | 0.20 / 0.50 / 0.90 | 28 / 61 / 137 | 0.164 / 0.357 / 0.801 |
+| Delta | `ses-2` | 0.20 / 0.60 / 0.90 | 30 / 57.5 / 127 | 0.175 / 0.336 / 0.743 |
+| Theta | `ses-1` | 0.25 / 0.50 / 0.80 | 32 / 57 / 152 | 0.187 / 0.333 / 0.889 |
+| Theta | `ses-2` | 0.30 / 0.55 / 0.80 | 27 / 56.5 / 121 | 0.158 / 0.330 / 0.708 |
+| Alpha | `ses-1` | 0.20 / 0.50 / 0.70 | 28 / 50 / 135 | 0.164 / 0.292 / 0.790 |
+| Alpha | `ses-2` | 0.25 / 0.50 / 0.80 | 26 / 46 / 140 | 0.152 / 0.269 / 0.819 |
+| Beta | `ses-1` | 0.15 / 0.50 / 0.80 | 27 / 57 / 154 | 0.158 / 0.333 / 0.901 |
+| Beta | `ses-2` | 0.25 / 0.45 / 0.75 | 27 / 45.5 / 133 | 0.158 / 0.266 / 0.778 |
+
 ---
 
 ## 3. The 26 Feature Sets & Input Tensors (Step 1)
@@ -744,13 +761,25 @@ The checks:
 
 ### 6.1 Tables
 
-* **Table T1 (Global Summary):** 26 rows, one per feature set. Columns: $U_1, U_2, \Delta U, W_1, W_2, I_{\text{self}}, I_{\text{others}}, I_{\text{diff}}$, accuracy (forward, backward and their mean), and the Mantel $\rho$ for `ses-1` and `ses-2`. Values are reported as mean $\pm$ SD (average ± standard deviation), median [95% CI] (from the bootstrap) and FDR-corrected $q$-values.
-* **Table T2 (Element Results):** one row per element of every feature (feature × element, 3,230 rows in total). Columns: label (electrode or pair name), region, hemisphere (left, right or midline), within/between-region flag (whether a link joins two electrodes in the same region), Euclidean distance (straight-line distance between the two electrodes), $U_1(e), U_2(e), W(e), I_{\text{diff}}(e)$, raw $p$, FDR $q$, taxonomy class (Phase 5a) and the fraction of $0/0$ instances.
-* **Table T3 (Variance Partition):** feature × element. The proportions of infant (trait), session and epoch (state) variance, without and with the age term, plus model convergence flags (whether each model fit finished successfully). Proportions from fits that did not converge are shown as `NaN`.
+* **Table T1 (Global Summary):** 26 rows, one per feature set. Columns: $U_1, U_2, \Delta U, W_1, W_2, I_{\text{self}}, I_{\text{others}}, I_{\text{diff}}$, accuracy (forward, backward and their mean), and the Mantel $\rho$ for `ses-1` and `ses-2`. Where the analysis provides them, each is reported as:
+  * mean $\pm$ SD, with the column name saying what the SD is taken over (171 pairs for $U_s$ and $\Delta U$, 19 infants for $W_s$, $I_{\text{self}}$ and $I_{\text{diff}}$, 342 off-diagonal cells for $I_{\text{others}}$);
+  * median [95% CI] from the infant bootstrap (only the CI for $I_{\text{self}}$ and $I_{\text{others}}$, whose bootstrap median is not saved);
+  * the raw p-value and its FDR q-value across the 26 feature sets, computed in `08_export_tables.py` from the p-values. The tests: the element-shuffle null for $U_s$, the paired bootstrap for $\Delta U$, the $W_s - O_s > 0$ test of Phase 3 for $W_s$ (which has no test of its own), the column permutation for $I_{\text{diff}}$ and each accuracy, and the Mantel test.
+
+  $I_{\text{self}}$, $I_{\text{others}}$ and the mean accuracy have no p-value of their own. P- and q-values are stored as plain numbers, so the table can be sorted by them.
+* **Table T2 (Element Results):** one row per element of every feature (feature × element, 3,230 rows in total). Columns: label (electrode or pair name), region, hemisphere (left, right or midline), within/between-region flag (whether a link joins two electrodes in the same region), Euclidean distance in mm (straight-line distance between the two electrodes), $U_1(e)$ and $U_2(e)$ each with raw $p$ and FDR $q$ (element-shuffle null), $W_1(e)$, $W_2(e)$, $I_{\text{diff}}(e)$ with raw $p$ and FDR $q$ (column permutation), taxonomy class (Phase 5a) and the fraction of $0/0$ instances at each session.
+* **Table T3 (Variance Partition):** feature × element. The proportions of infant (trait), session and epoch (state) variance, without and with the age term, plus one convergence flag for each model (unadjusted and age-adjusted). Proportions from fits that did not converge are shown as `NaN`.
 * **Table T4 (Robustness Summary):** check × feature, for checks 1–8 (174 rows). For $U_1$, $U_2$, $I_{\text{diff}}$ and the three accuracies: the baseline value, the value under the check and the change; whether $I_{\text{diff}}$ kept its sign; and the four Phase 5a class counts under the baseline and under the check.
 * **Table T4b (Electrode Distance):** one row per edge feature (18 rows), for check 9: $\rho(U(e), \text{distance})$, $\rho(I_{\text{diff}}(e), \text{distance})$, and the within- minus between-region difference of $U(e)$ before and after regressing out distance, each with its 95% CI, p and FDR q.
-* **Table T5 (Bookkeeping):** the completed subject metadata table (Section 2.2).
-* **Table T6 (Twin / Sibling Analysis):** 26 rows, one per feature set, summarising all twin comparisons. The newer Phase 6 fields (matched-set median and range, backward cross-identification, shared-element classes, element-level results) are saved in `twin_results.json` but not yet shown in the table (Section 8).
+* **Table T5 (Bookkeeping):** one row per infant (Step 0, item 6; Section 2.2). Columns: participant ID, sex (read from `participants.tsv`), age at `ses-1` and `ses-2` and the interval between them (in days), the annotated and the usable epochs at each session (usable = the annotated window lies inside the recording), the 12 epochs used, twin status, and notes generated from the data (the twins, and the two short-gap infants reported individually in Phase 6).
+* **Table T5b (Threshold Bookkeeping):** one row per GCC-thresholded network family (broadband, delta, theta, alpha, beta) and session (Step 0, item 5): the minimum, median and maximum of $\tau_c$, of the number of links and of the edge density (links / 171). $\tau_c$ is recomputed from the weighted networks with the Phase 1 rule, and the code stops if any recomputed network differs from the saved binary adjacency. The values are in Section 2.2.
+* **Table T6 (Twin / Sibling Analysis):** 26 rows, one per feature set, with every value of the sibling analysis (Phase 6, item 4):
+  * the twins' similarity and its percentile rank among all pairs and within both matched sets, with each matched set's median, range and size;
+  * the four cross-session cells $M[86, 86]$, $M[87, 87]$, $M[86, 87]$ and $M[87, 86]$, with the rank of each cross cell in its row and its column;
+  * which twin, if any, is identified as the other, and in which direction (forward or backward);
+  * the number of elements where either twin is identified as the other;
+  * the shared elements with their Phase 5a class, and how many are individual;
+  * the same-day control note.
 
 ### 6.2 Figures (Vector PDF Format)
 
@@ -811,8 +840,7 @@ The intermediate arrays are stored in `processed_tensors/` as `.npy` files, toge
 | Average reference check | Implemented for all 26 features; the interpretation still needs review with literature backing before use. | Phase 8, check 6 |
 | Robustness permutations | The robustness checks use 10,000 permutations (`--robustness-permutations`), not the 200,000 of the main analysis, to keep the run time near 10 minutes. | Phase 8 |
 | Element-level $\Delta U(e)$ | Reported without a statistical test; bootstrap and FDR still to be implemented. | Phase 6, item 1 |
-| FDR scope | Element tests are corrected within each feature, and the global tests of Phases 4 and 6 (including $\Delta U$) across the 26 feature sets. The global tests of Phases 2 and 3 are not yet corrected across feature sets, and Table T1 does not yet show the new Phase 4 and Phase 6 q-values. | Phase 7 |
-| Table T6 | Does not yet show the newer Phase 6 fields (matched-set median and range, backward cross-identification, shared-element classes, element-level results). | Section 6.1 |
+| FDR scope | Element tests are corrected within each feature, and the global tests of Phases 4 and 6 (including $\Delta U$) across the 26 feature sets. Phases 2 and 3 do not correct their global tests themselves; Table T1 does it for every global test, so all q-values appear there. | Phase 7, Section 6.1 |
 | Same-day control (twins) | Cannot be done: the dataset has no recording dates. | Phase 6, item 4 |
 | Number of permutations | Repeat the permutation tests (Phase 6, and the other permutation tests) with 50,000, 100,000 and 2,000,000 permutations, plus intermediate values chosen from the results, and check that p-values and significance stay stable. Not run yet; the current default is 200,000. | Phases 6 and 7 |
 | Epoch length | Two recordings (`sub-NORB00089` and `sub-NORB00103`, `ses-1`) have annotated windows longer than 2.56 s (up to 4.4 s and 5.4 s), which are used at full length. | Section 2.1, Phase 1 |
