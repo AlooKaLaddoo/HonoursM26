@@ -46,7 +46,7 @@ res["f01"]["I_diff"]                                        # results are groupe
 | `variance_results.json` | 1 | – | Phase 5 | How much of the variation comes from the infant, the session, or moment-to-moment noise. |
 | `developmental_results.json` | 1 | – | Phase 6 | How results relate to age and to the time between sessions. |
 | `twin_results.json` | 1 | – | Phase 6 | How similar the twin pair is compared with everyone else. |
-| `robustness_results.json` | 1 | – | Phase 7 | Results of the 88 robustness re-runs. |
+| `robustness_results.json` | 1 | – | Phase 7 | The main results re-run under each of the 9 robustness checks. |
 
 ---
 
@@ -115,23 +115,23 @@ Except for `metadata.json` and `robustness_results.json`, every JSON file is a d
 | `variance_results.json` | `elements`: one entry per element giving the share of variation due to the **infant** (`trait_prop`), the **session** (`session_prop`) and **epoch-to-epoch noise** (`epoch_prop`). Also included: the same three shares after adjusting for age (`*_adj`), and whether the model fit worked (`converged`, `skipped`). |
 | `developmental_results.json` | The change in universality between sessions (`delta_U_global`, confidence interval, p-value); Mantel tests checking whether infants closer in age are more similar (`mantel_ses1`, `mantel_ses2`); correlations with the time gap between sessions (`interval_corr`); and a close look at two infants with unusually short gaps (`individual_infants`: `sub-NORB00064`, 4 days; `sub-NORB00069`, 42 days). |
 | `twin_results.json` | For the twins `sub-NORB00086` and `sub-NORB00087`: their similarity in each session, and how it ranks among all 171 infant pairs, among pairs that include either twin, and among pairs of infants of a similar age. Also included: whether the pipeline confuses one twin for the other across sessions (`cross_identification`), and the elements where the twins are unusually similar in both sessions (`shared_elements`). |
-| `robustness_results.json` | A **list** of 88 rows (this is Table T4). Each row has `Check ID`, `Sensitivity Analysis`, `Feature ID`, `Metric` (`U_1` or `I_diff (%)`), `Baseline`, `Perturbed`, `Delta`, `Pct Change (%)` and a one-line `Conclusion`. |
+| `robustness_results.json` | `n_permutations`, `seed`, `m_edges` (links kept per network in check 8), and `baseline_max_abs_diff_vs_phases_2_4` (should be 0). `baseline` and `checks` (keyed by `check1` … `check8`, then by feature ID) hold, for each condition: `U_1`, `U_2`, `I_self`, `I_others`, `I_diff`, `acc_forward`, `acc_backward`, `acc_mean` and `class_counts` (`null` for check 5). `check9_distance` holds, per edge feature, the four distance tests, each with `obs`, `ci_95`, `p` and `q`. |
 
 ### The 9 robustness checks
 
-Each check changes one method choice and re-runs the key numbers to see whether the conclusions still hold.
+Each check changes one method choice and re-runs the main results (U₁, U₂, I_diff, identification accuracy and the class counts) to see whether the conclusions still hold. Checks 1–8 are in Table T4 (one row per check and feature); check 9 is in Table T4b.
 
-| Check | What changes | Rows |
+| Check | What changes | Features |
 | :--- | :--- | :---: |
-| 1 | How 0 ÷ 0 similarity is handled (count it as 0 instead of skipping it) | 8 |
-| 2 | Compare all 12 × 12 epoch combinations instead of matching epoch 1 to 1, 2 to 2, … | 16 |
-| 3 | Use only 6 epochs instead of 12 | 16 |
-| 4 | Leave out the twins (17 infants) | 20 |
-| 5 | Compare only the *pattern* of values, not their overall size | 14 |
-| 6 | Use a different EEG reference (average reference) | 2 |
-| 7 | Use a connectivity measure (dwPLI) that ignores signal leaking between nearby electrodes | 2 |
-| 8 | Build binary networks from the 58 strongest connections instead of the adaptive threshold | 2 |
-| 9 | Remove the effect of the physical distance between electrodes | 8 |
+| 1 | How 0 ÷ 0 similarity is handled (count it as 0 instead of skipping it) | 26 |
+| 2 | Compare all 12 × 12 epoch combinations instead of matching epoch 1 to 1, 2 to 2, … | 26 |
+| 3 | Use only 6 epochs instead of 12 | 26 |
+| 4 | Leave out the twins (17 infants) | 26 |
+| 5 | Compare only the *pattern* of values, not their overall size (no class counts) | 26 |
+| 6 | Use a different EEG reference (average reference), rebuilding every feature | 26 |
+| 7 | Use a connectivity measure (debiased wPLI) that ignores signal leaking between nearby electrodes | 5 |
+| 8 | Build binary networks from the m strongest connections instead of the adaptive threshold | 13 |
+| 9 | How universality and individuality relate to the physical distance between electrodes | 18 (edges) |
 
 ---
 

@@ -4,7 +4,7 @@ Compiles results from all preceding phases into publication-ready tables:
   - Table T1: Global Summary (26 features x 18 metrics)
   - Table T2: Element Results (3,230 element-level evaluations across features)
   - Table T3: Variance Partition (Three-way LMM variance decomposition & age adjustments)
-  - Table T4: Robustness & Sensitivity Checks (88 perturbation conditions across 9 checks)
+  - Table T4: Robustness & Sensitivity Checks (one row per check and feature, checks 1-8), and T4b (check 9)
   - Table T5: Cohort Bookkeeping (Subject ages, windows, twin status, and notes)
   - Table T6: Sibling / Twin Analysis (Twin comparisons for sub-NORB00086 & sub-NORB00087)
 """
@@ -250,15 +250,16 @@ def export_all_tables():
     print(f" -> Table T3 saved: {TABLES_DIR / 'Table_T3_Variance_Partition.csv'}")
     
     # ------------------------------------------------------------------
-    # TABLE T4: ROBUSTNESS & SENSITIVITY SUMMARY (88 rows)
+    # TABLES T4 & T4b: ROBUSTNESS & SENSITIVITY (written as CSV by Phase 7)
     # ------------------------------------------------------------------
-    t4_csv = TABLES_DIR / "Table_T4_Robustness.csv"
-    if t4_csv.exists():
-        df_t4 = pd.read_csv(t4_csv)
-        (TABLES_DIR / "Table_T4_Robustness.md").write_text(df_to_markdown(df_t4))
-        print(f" -> Table T4 saved: {t4_csv} (.csv & .md)")
-    else:
-        print(" -> Table T4 missing; please run Phase 7 first.")
+    for name in ("Table_T4_Robustness", "Table_T4b_Electrode_Distance"):
+        t4_csv = TABLES_DIR / f"{name}.csv"
+        if t4_csv.exists():
+            df_t4 = pd.read_csv(t4_csv)
+            (TABLES_DIR / f"{name}.md").write_text(df_to_markdown(df_t4))
+            print(f" -> {name} saved: {t4_csv} (.csv & .md)")
+        else:
+            print(f" -> {name} missing; please run Phase 7 first.")
 
     # ------------------------------------------------------------------
     # TABLE T5: SUBJECT BOOKKEEPING (19 rows)

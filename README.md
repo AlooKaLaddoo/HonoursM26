@@ -45,6 +45,7 @@ It skips phase 1 by default, because phase 1 only rebuilds the input data, which
 
 - `--permutations`: how many random shuffles to use for the significance tests (default 200,000; fewer runs faster). Phases 2–4 also use this number of draws for their bootstrap confidence intervals.
 - `--workers`: how many CPU cores to use (default 8).
+- `--robustness-permutations`: how many random shuffles each robustness check in phase 7 uses (default 10,000).
 
 You can also run a single step on its own, for example:
 
@@ -86,7 +87,7 @@ All babies change in similar ways between 3 and 6 months. Subtracting D removes 
 | 4 | `04_compute_identifiability.py` | Comparisons C and D: can we recognise each baby across sessions? |
 | 5 | `05_taxonomy_and_variance.py` | Sorts each brain connection into "shared", "personal", "both" or "neither", and measures how much of the variation comes from the baby, the session and moment-to-moment noise. |
 | 6 | `06_developmental_and_twins.py` | Checks how results relate to age and to the time between sessions, and looks at the one twin pair in the group. |
-| 7 | `07_robustness_checks.py` | Repeats the key results with 9 different method choices (88 runs in total) to make sure they hold up. |
+| 7 | `07_robustness_checks.py` | Repeats the key results with 9 different method choices, one at a time, to make sure they hold up. |
 | 8 | `08_export_tables.py` | Writes the final tables T1–T6. |
 | 9 | `09_generate_figures.py` | Draws the final Figures 1–7. |
 
@@ -112,7 +113,8 @@ HonoursM26/
 │   ├── Table_T1_Global_Summary     # Headline numbers for each of the 26 features
 │   ├── Table_T2_Element_Results    # Results for every single node and connection (3,230 rows)
 │   ├── Table_T3_Variance_Partition # Baby vs. session vs. noise breakdown for each node/connection
-│   ├── Table_T4_Robustness         # Results of the 88 robustness runs
+│   ├── Table_T4_Robustness         # Main results under each robustness check (one row per check and feature)
+│   ├── Table_T4b_Electrode_Distance # How universality and individuality relate to electrode distance
 │   ├── Table_T5_Bookkeeping        # Ages and recording dates for the 19 infants
 │   └── Table_T6_Sibling_Analysis   # How similar the twin pair (sub-NORB00086 & 00087) is
 │

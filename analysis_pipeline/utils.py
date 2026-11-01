@@ -174,6 +174,20 @@ def compute_all_broadband_features(df: pd.DataFrame) -> dict:
 
     # 2. Binary Network via GCC adaptive thresholding (matching binary/*.ipynb)
     bin_df, thr, density = build_binary_network(df, step=0.05)
+    binary = compute_binary_features(bin_df)
+
+    return {
+        "f01": f01, "f02": f02, "f03": f03, "f04": f04, "f05": f05,
+        "f06": f06, "f07": f07, "f08": f08, "f09": f09, **binary,
+        "tau_c": thr, "density": density
+    }
+
+
+def compute_binary_features(bin_df: pd.DataFrame) -> dict:
+    """
+    Computes the 9 binary-network features (f10 - f18) from one binary adjacency DataFrame.
+    Used for the GCC-thresholded networks and for the fixed-density networks of the robustness checks.
+    """
     G_b = nx.from_pandas_adjacency(bin_df)
 
     f10 = extract_matrix_edge_vector(bin_df)
@@ -199,11 +213,8 @@ def compute_all_broadband_features(df: pd.DataFrame) -> dict:
     f18 = extract_edge_vector(compute_edge_closeness(G_b, distance=None))
 
     return {
-        "f01": f01, "f02": f02, "f03": f03, "f04": f04, "f05": f05,
-        "f06": f06, "f07": f07, "f08": f08, "f09": f09, "f10": f10,
-        "f11": f11, "f12": f12, "f13": f13, "f14": f14, "f15": f15,
-        "f16": f16, "f17": f17, "f18": f18,
-        "tau_c": thr, "density": density
+        "f10": f10, "f11": f11, "f12": f12, "f13": f13, "f14": f14,
+        "f15": f15, "f16": f16, "f17": f17, "f18": f18
     }
 
 # ----------------- EEG Filtering & Band Centralities -----------------

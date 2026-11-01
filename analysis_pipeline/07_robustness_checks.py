@@ -1,26 +1,36 @@
 """
 Phase 7: Robustness & Sensitivity Checks (Step 8 - Table T4)
-Re-evaluates main metrics across all 9 distinct sensitivity checks specified in Section 5 Phase 8:
-  1. 0/0 Rule: Set 0/0 -> 0 instead of excluding NaN/undefined
-  2. Combinatorial Epoch Pairing: Average over all 12 x 12 = 144 epoch combinations vs diagonal (k, k)
-  3. Epoch Window Length: Truncate to K = 6 epochs instead of K = 12
-  4. Twin Exclusion: Recompute with N = 17 infants (excluding twin pair sub-NORB00086 and sub-NORB00087)
-  5. Pattern-Only Normalization: L1-normalized vectors (sum = 1) before computing Jaccard
-  6. Reference Montage: Average reference montage re-referencing continuous EEG
-  7. Volume Conduction Control: Debiased weighted Phase Lag Index (dwPLI) vs Pearson |r|
-  8. Fixed-Density Binarization: Fixed top-m strongest edges (m = median GCC edge count = 58)
-  9. Physical Electrode Distance Regression: Regress 3D Euclidean inter-electrode distance out of correlations
-Outputs Table T4 (CSV) and JSON database.
+Reruns the main results - U_1, U_2, I_diff, identification accuracy and the Step 5a class counts - with one
+change at a time (furtherAnalysis Step 8); everything else is kept as in the main analysis:
+  1. 0/0 rule: 0/0 set to 0 instead of excluded (all features)
+  2. Epoch pairing: J and S averaged over all K x K epoch pairs instead of (k, k) (all features)
+  3. Number of epochs: K = 6 (first 6 epochs) instead of K = 12 (all features)
+  4. Twins: sub-NORB00086 and sub-NORB00087 excluded, N = 17 (all features)
+  5. Pattern only: each epoch's vector divided by its sum before computing S (all features, recording level)
+  6. Reference: average reference before computing correlations; all 26 features rebuilt from the EDFs
+  7. Volume conduction: debiased wPLI (mne_connectivity "wpli2_debiased", per band, negative values set to 0)
+     instead of |r| (weighted edge weight features)
+  8. Binarisation: the m strongest edges of every network instead of the GCC rule, m = median GCC edge count
+     (all binary features)
+  9. Electrode distance: Spearman rho of U(e) and of I_diff(e) with inter-electrode distance, and the within- vs
+     between-region comparison of U(e) repeated on its residuals after linear regression on distance (edge features)
+The element-level tests behind the class counts use n_permutations (default 10,000, as in Step 7.3). The baseline is
+recomputed with the same code and permutations, so class counts are compared like with like; its recording-level
+values are checked against Phases 2 and 4.
+Outputs Table T4 (checks 1-8), Table T4b (check 9) and robustness_results.json.
 """
+import concurrent.futures
 import json
 import sys
+import warnings
 from itertools import combinations
 from pathlib import Path
 
 import mne
 import numpy as np
 import pandas as pd
-from scipy import signal
+from scipy import stats
+from statsmodels.stats.multitest import multipletests
 
 # Support both direct script execution and package imports
 if __package__ is None or __package__ == "":
@@ -28,39 +38,324 @@ if __package__ is None or __package__ == "":
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
     from analysis_pipeline.config import (
+        CHANNELS,
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        FREQUENCY_BANDS,
         N_EPOCHS,
         NODE_LABELS,
+        NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
         SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from analysis_pipeline.utils import (
+        compute_all_broadband_features,
+        compute_binary_features,
+        extract_band_matrices,
+        extract_matrix_edge_vector,
         load_annotations,
         recording_S,
         segment_eeg_from_annotations,
     )
 else:
     from .config import (
+        CHANNELS,
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        FREQUENCY_BANDS,
         N_EPOCHS,
         NODE_LABELS,
+        NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
         SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from .utils import (
+        compute_all_broadband_features,
+        compute_binary_features,
+        extract_band_matrices,
+        extract_matrix_edge_vector,
         load_annotations,
         recording_S,
         segment_eeg_from_annotations,
     )
 
+# Band features: weighted edge weight and binary adjacency per band (as in Phase 1)
+BAND_FEATURES = {"delta": ("f19", "f20"), "theta": ("f21", "f22"), "alpha": ("f23", "f24"), "beta": ("f25", "f26")}
+# Check 7: weighted edge weight features and their frequency range; broadband spans the four bands
+DWPLI_FEATURES = {
+    "f01": (FREQUENCY_BANDS["delta"][0], FREQUENCY_BANDS["beta"][1]),
+    "f19": FREQUENCY_BANDS["delta"],
+    "f21": FREQUENCY_BANDS["theta"],
+    "f23": FREQUENCY_BANDS["alpha"],
+    "f25": FREQUENCY_BANDS["beta"],
+}
+# Check 8: binary features rebuilt from the weighted network they are thresholded from
+FIXED_DENSITY_SOURCES = {"broadband": "f01", "delta": "f19", "theta": "f21", "alpha": "f23", "beta": "f25"}
+EPOCH_SECONDS = 2.56
+TWIN_IDS = ("sub-NORB00086", "sub-NORB00087")
+METRICS = ["U_1", "U_2", "I_diff", "acc_forward", "acc_backward", "acc_mean"]
+CLASSES = ["Universal", "Individual", "Universal and Individual", "Neither"]
+
+
+# ----------------------------------------------------------------------------------------------
+# Main results for one feature tensor (Steps 2, 4 and 5a)
+# ----------------------------------------------------------------------------------------------
+
+def epoch_pairing(K: int, pairing: str):
+    """Epoch index pairs: (k, k) for the main analysis, or all K x K pairs (check 2)."""
+    if pairing == "diag":
+        return np.arange(K), np.arange(K)
+    k1, k2 = np.meshgrid(np.arange(K), np.arange(K), indexing="ij")
+    return k1.ravel(), k2.ravel()
+
+
+def nan_mean(values: np.ndarray, axis: int) -> np.ndarray:
+    """Mean ignoring NaN, NaN where no value is defined (without RuntimeWarnings)."""
+    valid = ~np.isnan(values)
+    total = np.where(valid, values, 0.0).sum(axis=axis)
+    count = valid.sum(axis=axis)
+    return np.divide(total, count, out=np.full(np.shape(total), np.nan), where=count > 0)
+
+
+def jaccard_ratio(x1: np.ndarray, x2: np.ndarray, zero_rule: bool) -> np.ndarray:
+    """min / max per entry; 0/0 is NaN (main rule) or 0 (check 1)."""
+    mn = np.minimum(x1, x2)
+    mx = np.maximum(x1, x2)
+    ok = mx > 0
+    ratio = np.divide(mn, mx, out=np.zeros(np.broadcast_shapes(mn.shape, mx.shape)), where=ok)
+    return ratio if zero_rule else np.where(ok, ratio, np.nan)
+
+
+def cross_J(a: np.ndarray, b: np.ndarray, k1: np.ndarray, k2: np.ndarray, zero_rule: bool) -> np.ndarray:
+    """
+    G[e, e2] = J between a's element e and b's element e2, averaged over the epoch pairs.
+    The diagonal is the observed J(e); the element-shuffle null reads G[e, pi(e)], so it averages
+    epochs first and pairs second exactly like the observed value (Step 2 item 5).
+    """
+    ratio = jaccard_ratio(a[k1][:, :, None], b[k2][:, None, :], zero_rule)
+    return nan_mean(ratio, axis=0)
+
+
+def element_shuffle_p(G: np.ndarray, obs: np.ndarray, n_permutations: int, rng, chunk: int = 100) -> np.ndarray:
+    """One-sided p of U_s(e) against the element-shuffle null (Step 2 item 5); undefined U_s(e) gets p = 1."""
+    n_pairs, dim, _ = G.shape
+    pair_idx = np.arange(n_pairs)[None, :, None]
+    elem_idx = np.arange(dim)[None, None, :]
+    count_ge = np.zeros(dim, dtype=np.int64)
+    done = 0
+    while done < n_permutations:
+        c = min(chunk, n_permutations - done)
+        perms = rng.permuted(np.tile(np.arange(dim), (c, n_pairs, 1)), axis=2)  # one permutation per pair
+        null_U = nan_mean(G[pair_idx, elem_idx, perms], axis=1)  # (c, dim)
+        count_ge += np.sum(null_U >= obs, axis=0)
+        done += c
+    p = (1.0 + count_ge) / (1.0 + n_permutations)
+    p[np.isnan(obs)] = 1.0
+    return p
+
+
+def identifiability_elem_p(M_elem: np.ndarray, obs_diff: np.ndarray, n_permutations: int, rng) -> np.ndarray:
+    """One-sided p of I_diff(e) from column permutations of every M_e together (Step 7.3 item 2), as in Phase 4."""
+    n = M_elem.shape[0]
+    rows = np.arange(n)
+    valid = ~np.isnan(M_elem)
+    filled = np.where(valid, M_elem, 0.0)
+    total_sum, total_count = filled.sum(axis=(0, 1)), valid.sum(axis=(0, 1))
+    count_ge = np.zeros(M_elem.shape[2], dtype=np.int64)
+    for _ in range(n_permutations):
+        perm = rng.permutation(n)
+        diag_sum, diag_count = filled[rows, perm].sum(axis=0), valid[rows, perm].sum(axis=0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            null_diff = (diag_sum / diag_count - (total_sum - diag_sum) / (total_count - diag_count)) * 100.0
+        count_ge += null_diff >= obs_diff
+    p = (1.0 + count_ge) / (1.0 + n_permutations)
+    p[np.isnan(obs_diff) | (obs_diff <= 1e-6)] = 1.0  # cannot show "more like oneself"
+    return p
+
+
+def identification_accuracy(M: np.ndarray):
+    """1-NN accuracy in % (Step 4 item 4); a tie for the maximum counts as incorrect."""
+    idx = np.arange(M.shape[0])
+    row_max, col_max = M.max(axis=1), M.max(axis=0)
+    fwd = (np.argmax(M, axis=1) == idx) & (np.sum(M == row_max[:, None], axis=1) == 1)
+    bwd = (np.argmax(M, axis=0) == idx) & (np.sum(M == col_max[None, :], axis=0) == 1)
+    return float(np.mean(fwd) * 100.0), float(np.mean(bwd) * 100.0)
+
+
+def main_results(X: np.ndarray, n_permutations: int, seed: int, pairing: str = "diag",
+                 zero_rule: bool = False, element_level: bool = True, keep_arrays: bool = False) -> dict:
+    """
+    U_1, U_2 (Step 2), I_diff and identification accuracy (Step 4), and the Step 5a class counts for one
+    feature tensor X of shape (n_infants, 2, K, dim). Class counts need the element-level tests, so they are
+    skipped (None) when element_level is False.
+    """
+    rng = np.random.default_rng(seed)
+    n, _, K = X.shape[:3]
+    k1, k2 = epoch_pairing(K, pairing)
+    pairs = list(combinations(range(n), 2))
+    out = {}
+    q_u = []
+    pair_J = []
+    for s in range(2):
+        out[f"U_{s + 1}"] = float(np.mean([recording_S(X[a, s][k1], X[b, s][k2]) for a, b in pairs]))
+        if element_level:
+            G = np.stack([cross_J(X[a, s], X[b, s], k1, k2, zero_rule) for a, b in pairs])
+            J_s = np.diagonal(G, axis1=1, axis2=2)  # (n_pairs, dim)
+            U_elem = nan_mean(J_s, axis=0)
+            q_u.append(np.asarray(multipletests(element_shuffle_p(G, U_elem, n_permutations, rng), method="fdr_bh")[1]))
+            pair_J.append(J_s)
+            out[f"U_elem_{s + 1}"] = U_elem
+
+    M = np.array([[recording_S(X[a, 0][k1], X[b, 1][k2]) for b in range(n)] for a in range(n)])
+    off = ~np.eye(n, dtype=bool)
+    out["I_self"] = float(np.mean(np.diag(M)))
+    out["I_others"] = float(np.mean(M[off]))
+    out["I_diff"] = (out["I_self"] - out["I_others"]) * 100.0
+    out["acc_forward"], out["acc_backward"] = identification_accuracy(M)
+    out["acc_mean"] = (out["acc_forward"] + out["acc_backward"]) / 2.0
+
+    out["class_counts"] = None
+    if element_level:
+        M_elem = np.array([[nan_mean(jaccard_ratio(X[a, 0][k1], X[b, 1][k2], zero_rule), axis=0)
+                            for b in range(n)] for a in range(n)])  # (n, n, dim)
+        I_diff_elem = (nan_mean(M_elem[~off], axis=0) - nan_mean(M_elem[off], axis=0)) * 100.0
+        q_idiff = np.asarray(multipletests(identifiability_elem_p(M_elem, I_diff_elem, n_permutations, rng), method="fdr_bh")[1])
+        sig_u = (q_u[0] < 0.05) & (q_u[1] < 0.05)
+        sig_i = q_idiff < 0.05
+        out["class_counts"] = {
+            "Universal": int(np.sum(sig_u & ~sig_i)),
+            "Individual": int(np.sum(~sig_u & sig_i)),
+            "Universal and Individual": int(np.sum(sig_u & sig_i)),
+            "Neither": int(np.sum(~sig_u & ~sig_i)),
+        }
+        out["I_diff_elem"] = I_diff_elem
+        if keep_arrays:  # for check 9
+            out["pair_J"] = pair_J
+            out["M_elem"] = M_elem
+    if not keep_arrays:
+        for key in ("U_elem_1", "U_elem_2", "I_diff_elem"):
+            out.pop(key, None)
+    return out
+
+
+def _main_results_task(task):
+    key, X, kwargs = task
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    return key, main_results(X, **kwargs)
+
+
+# ----------------------------------------------------------------------------------------------
+# Rebuilt feature tensors (checks 6, 7 and 8)
+# ----------------------------------------------------------------------------------------------
+
+def _load_recording(subj: str, ses: str, reference: str | None):
+    edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
+    raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
+    raw.pick(CHANNELS)
+    if reference == "average":
+        raw.set_eeg_reference("average", projection=False, verbose=False)
+    ann_df = load_annotations(subj, ses)
+    if ann_df is None:
+        raise FileNotFoundError(f"Missing annotations for {subj} {ses}")
+    return raw, ann_df
+
+
+def rebuild_recording_features(subj: str, ses: str, reference: str | None) -> dict:
+    """
+    All 26 features of one recording, built from the EDF as in Phase 1, optionally after re-referencing
+    (check 6). Broadband f01 - f18 use |r| of the unfiltered epochs, which reproduces the Phase 1 correlation files;
+    band features filter the whole recording before cutting epochs.
+    """
+    raw, ann_df = _load_recording(subj, ses, reference)
+    out = {fid: np.zeros((N_EPOCHS, meta["dim"])) for fid, meta in FEATURE_DEFS.items()}
+    segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
+    if len(segments) < N_EPOCHS:
+        raise ValueError(f"Insufficient segments for {subj} {ses}")
+    for ep, seg in enumerate(segments):
+        df = pd.DataFrame(np.abs(np.corrcoef(seg)), index=CHANNELS, columns=CHANNELS)
+        feats = compute_all_broadband_features(df)
+        for fid, meta in FEATURE_DEFS.items():
+            if meta["band"] == "broadband":
+                out[fid][ep] = feats[fid]
+    for band, (w_fid, b_fid) in BAND_FEATURES.items():
+        l_freq, h_freq = FREQUENCY_BANDS[band]
+        band_results = extract_band_matrices(subj, ses, l_freq, h_freq, n_epochs=N_EPOCHS, raw=raw, ann_df=ann_df)
+        for ep, (corr_df, bin_df, _thr, _density) in enumerate(band_results):
+            out[w_fid][ep] = extract_matrix_edge_vector(corr_df)
+            out[b_fid][ep] = extract_matrix_edge_vector(bin_df)
+    return out
+
+
+def dwpli_recording(subj: str, ses: str) -> dict:
+    """
+    Debiased wPLI (check 7) of one recording with mne_connectivity, one value per edge and band, estimated across
+    the 12 epochs (each cut to 2.56 s); negative values set to 0. Returns fid -> (171,) in EDGE_LABELS order.
+    """
+    from mne_connectivity import spectral_connectivity_epochs
+
+    raw, ann_df = _load_recording(subj, ses, None)
+    sfreq = float(raw.info["sfreq"])
+    segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
+    n_samples = min(int(round(EPOCH_SECONDS * sfreq)), min(seg.shape[1] for seg in segments))
+    data = np.stack([seg[:, :n_samples] for seg in segments])  # (12, 19, n_samples)
+    ch_idx = {ch: i for i, ch in enumerate(CHANNELS)}
+    out = {}
+    for fid, (fmin, fmax) in DWPLI_FEATURES.items():
+        con = spectral_connectivity_epochs(
+            data, method="wpli2_debiased", sfreq=sfreq, fmin=fmin, fmax=fmax, faverage=True, verbose=False
+        )
+        dense = np.asarray(con.get_data(output="dense"))[:, :, 0]
+        dense = np.maximum(dense + dense.T, 0.0)  # lower triangle filled; negative values set to 0
+        out[fid] = np.array([dense[ch_idx[e.split("-")[0]], ch_idx[e.split("-")[1]]] for e in EDGE_LABELS])
+    return out
+
+
+def fixed_density_recording(weighted: dict, m_edges: dict) -> dict:
+    """
+    Binary features of one recording from the m strongest edges of every weighted network (check 8).
+    weighted: family -> (12, 171) weighted edge weights. Returns fid -> (12, dim).
+    """
+    out = {}
+    node_idx = {node: i for i, node in enumerate(NODE_LABELS)}
+    for family, W in weighted.items():
+        m = m_edges[family]
+        rows = []
+        for w in W:
+            keep = np.argsort(-w, kind="stable")[:m]
+            adj = np.zeros((len(NODE_LABELS), len(NODE_LABELS)))
+            for e in keep:
+                u, v = EDGE_LABELS[e].split("-")
+                adj[node_idx[u], node_idx[v]] = adj[node_idx[v], node_idx[u]] = 1.0
+            bin_df = pd.DataFrame(adj, index=NODE_LABELS, columns=NODE_LABELS)
+            rows.append(compute_binary_features(bin_df) if family == "broadband" else {"adj": extract_matrix_edge_vector(bin_df)})
+        if family == "broadband":
+            for fid in rows[0]:
+                out[fid] = np.stack([r[fid] for r in rows])
+        else:
+            out[BAND_FEATURES[family][1]] = np.stack([r["adj"] for r in rows])
+    return out
+
+
+def _recording_task(task):
+    kind, sub_idx, ses_idx, payload = task
+    warnings.filterwarnings("ignore")
+    subj, ses = SUBJECT_IDS[sub_idx], SESSIONS[ses_idx]
+    if kind == "avg_ref":
+        return kind, sub_idx, ses_idx, rebuild_recording_features(subj, ses, "average")
+    if kind == "dwpli":
+        return kind, sub_idx, ses_idx, dwpli_recording(subj, ses)
+    return kind, sub_idx, ses_idx, fixed_density_recording(*payload)
+
+
+# ----------------------------------------------------------------------------------------------
+# Check 9: electrode distance
+# ----------------------------------------------------------------------------------------------
 
 def get_electrode_3d_distances():
     """Load 3D Cartesian coordinates for standard electrodes and compute 171 pairwise Euclidean distances."""
@@ -72,7 +367,7 @@ def get_electrode_3d_distances():
     for name, x, y, z in zip(df["name"], df["x"], df["y"], df["z"]):
         if str(name) in NODE_LABELS:
             coords[str(name)] = np.array([float(x), float(y), float(z)])
-            
+
     distances = []
     for edge in EDGE_LABELS:
         u, v = edge.split("-")
@@ -81,525 +376,261 @@ def get_electrode_3d_distances():
     return np.array(distances, dtype=np.float64)
 
 
-def run_robustness_checks():
+def spearman_rows(Y: np.ndarray, x: np.ndarray) -> np.ndarray:
+    """Spearman rho between each row of Y and x, using the finite entries of that row."""
+    out = np.full(Y.shape[0], np.nan)
+    finite = np.isfinite(Y)
+    full = finite.all(axis=1)
+    if full.any():
+        ry = stats.rankdata(Y[full], axis=1)
+        ry -= ry.mean(axis=1, keepdims=True)
+        rx = stats.rankdata(x)
+        rx -= rx.mean()
+        with np.errstate(divide="ignore", invalid="ignore"):
+            out[full] = (ry @ rx) / (np.sqrt((ry ** 2).sum(axis=1)) * np.sqrt((rx ** 2).sum()))
+    for i in np.where(~full)[0]:
+        ok = finite[i]
+        if ok.sum() > 2:
+            out[i] = stats.spearmanr(Y[i, ok], x[ok])[0]
+    return out
+
+
+def within_minus_between(Y: np.ndarray, within: np.ndarray, x: np.ndarray | None = None) -> np.ndarray:
+    """
+    Mean over within-region edges minus mean over between-region edges, per row of Y. With x, the comparison is
+    made on the residuals of each row after linear regression on x (check 9).
+    """
+    out = np.full(Y.shape[0], np.nan)
+    for i, y in enumerate(Y):
+        ok = np.isfinite(y)
+        if ok.sum() < 3:
+            continue
+        r = y[ok]
+        if x is not None:
+            slope, intercept = np.polyfit(x[ok], r, 1)
+            r = r - (intercept + slope * x[ok])
+        out[i] = np.mean(r[within[ok]]) - np.mean(r[~within[ok]])
+    return out
+
+
+def bootstrap_summary(obs: float, boot: np.ndarray, B: int) -> dict:
+    """Observed value, 95% percentile CI and two-sided bootstrap p (Step 7.2 item 4, floor 1/B)."""
+    boot = boot[np.isfinite(boot)]
+    p = 2.0 * min(np.mean(boot <= 0), np.mean(boot >= 0)) if len(boot) else 1.0
+    lo, hi = np.percentile(boot, [2.5, 97.5]) if len(boot) else (np.nan, np.nan)
+    return {"obs": float(obs), "ci_95": [float(lo), float(hi)], "p": float(min(max(p, 1.0 / B), 1.0))}
+
+
+def distance_check(base: dict, distances: np.ndarray, B: int, seed: int) -> dict:
+    """
+    Check 9 for one edge feature. U(e) = mean of U_1(e) and U_2(e); every quantity is recomputed in the same
+    infant resamples (Step 7.2): pair values weighted by c_i * c_j and M[i, i] by c_i, where c counts how often
+    each infant was drawn, which equals using all position pairs with d_p != d_q.
+    """
+    n = base["M_elem"].shape[0]
+    within = np.array([NODE_REGIONS[e.split("-")[0]] == NODE_REGIONS[e.split("-")[1]] for e in EDGE_LABELS])
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, n, (B, n))
+    c = np.bincount((idx + n * np.arange(B)[:, None]).ravel(), minlength=B * n).reshape(B, n).astype(np.float64)
+    p_i, q_i = np.triu_indices(n, k=1)
+    W_pairs = c[:, p_i] * c[:, q_i]
+
+    def weighted_mean(W, V):
+        valid = ~np.isnan(V)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return (W @ np.where(valid, V, 0.0)) / (W @ valid)
+
+    U_obs = (base["U_elem_1"] + base["U_elem_2"]) / 2.0
+    U_boot = (weighted_mean(W_pairs, base["pair_J"][0]) + weighted_mean(W_pairs, base["pair_J"][1])) / 2.0
+    M_elem = base["M_elem"]
+    off = ~np.eye(n, dtype=bool)
+    W_off = (c[:, :, None] * c[:, None, :])[:, off]
+    I_diff_boot = (weighted_mean(c, M_elem[np.arange(n), np.arange(n)]) - weighted_mean(W_off, M_elem[off])) * 100.0
+    I_diff_obs = base["I_diff_elem"]
+
+    return {
+        "rho_U_distance": bootstrap_summary(spearman_rows(U_obs[None], distances)[0], spearman_rows(U_boot, distances), B),
+        "rho_Idiff_distance": bootstrap_summary(spearman_rows(I_diff_obs[None], distances)[0], spearman_rows(I_diff_boot, distances), B),
+        "within_minus_between_U": bootstrap_summary(within_minus_between(U_obs[None], within)[0], within_minus_between(U_boot, within), B),
+        "within_minus_between_U_resid": bootstrap_summary(
+            within_minus_between(U_obs[None], within, distances)[0], within_minus_between(U_boot, within, distances), B
+        ),
+    }
+
+
+# ----------------------------------------------------------------------------------------------
+# Table T4
+# ----------------------------------------------------------------------------------------------
+
+def t4_row(check_id: str, check_name: str, fid: str, base: dict, pert: dict, note: str = "") -> dict:
+    row = {"Check ID": check_id, "Sensitivity Analysis": check_name, "Feature ID": fid,
+           "Feature Name": FEATURE_DEFS[fid]["name"], "Note": note}
+    for k in METRICS:
+        row[f"{k} baseline"] = round(base[k], 4)
+        row[f"{k} check"] = round(pert[k], 4)
+        row[f"{k} change"] = round(pert[k] - base[k], 4)
+    row["I_diff same sign"] = bool(np.sign(pert["I_diff"]) == np.sign(base["I_diff"]))
+    for cls in CLASSES:
+        row[f"{cls} baseline"] = base["class_counts"][cls]
+        row[f"{cls} check"] = pert["class_counts"][cls] if pert["class_counts"] is not None else "n/a"
+    return row
+
+
+def run_robustness_checks(n_permutations: int = 10000, n_workers: int = 8, seed: int = 42):
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    n_subs = len(SUBJECT_IDS)
     print("=" * 80)
     print("PHASE 7: ROBUSTNESS & SENSITIVITY CHECKS (STEP 8 - TABLE T4)")
-    print("Cohort: 19 infants | 9 Methodological Variations")
+    print(f"Cohort: {n_subs} infants | 9 checks | Element-level permutations: {n_permutations} | Seed: {seed} | Workers: {n_workers}")
     print("=" * 80)
-    
-    # Load primary baseline results
+
     u_file = OUTPUT_TENSORS_DIR / "universality_results.json"
     i_file = OUTPUT_TENSORS_DIR / "identifiability_results.json"
     if not u_file.exists() or not i_file.exists():
         raise FileNotFoundError("Prerequisite baseline results missing. Please run Phases 2 and 4 first.")
-        
     with open(u_file) as f:
-        u_base = json.load(f)
+        u_main = json.load(f)
     with open(i_file) as f:
-        i_base = json.load(f)
-        
+        i_main = json.load(f)
+
+    X_all = {fid: np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy") for fid in FEATURE_DEFS}
+    all_fids = list(FEATURE_DEFS)
+    binary_fids = [fid for fid, meta in FEATURE_DEFS.items() if meta["network"] == "binary"]
+    edge_fids = [fid for fid, meta in FEATURE_DEFS.items() if meta["type"] == "edge"]
+    recordings = [(a, s) for a in range(n_subs) for s in range(len(SESSIONS))]
+
+    # m = median GCC edge count of each network family (Step 0 item 5), for check 8
+    m_edges = {"broadband": int(round(float(np.median(X_all["f10"].sum(axis=-1)))))}
+    for band, (_w, b_fid) in BAND_FEATURES.items():
+        m_edges[band] = int(round(float(np.median(X_all[b_fid].sum(axis=-1)))))
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+        # Rebuilt tensors for checks 6, 7 and 8, one task per recording
+        print("Rebuilding features: average reference (check 6), debiased wPLI (check 7), fixed density (check 8)...")
+        rec_tasks = []
+        for a, s in recordings:
+            rec_tasks.append(("avg_ref", a, s, None))
+            rec_tasks.append(("dwpli", a, s, None))
+            weighted = {fam: X_all[src][a, s] for fam, src in FIXED_DENSITY_SOURCES.items()}
+            rec_tasks.append(("fixed_density", a, s, (weighted, m_edges)))
+        X_avg = {fid: np.zeros_like(X_all[fid]) for fid in all_fids}
+        X_dwpli = {fid: np.zeros((n_subs, len(SESSIONS), 1, len(EDGE_LABELS))) for fid in DWPLI_FEATURES}
+        X_fixed = {fid: np.zeros_like(X_all[fid]) for fid in binary_fids}
+        for kind, a, s, feats in executor.map(_recording_task, rec_tasks):
+            for fid, values in feats.items():
+                if kind == "avg_ref":
+                    X_avg[fid][a, s] = values
+                elif kind == "dwpli":
+                    X_dwpli[fid][a, s, 0] = values
+                else:
+                    X_fixed[fid][a, s] = values
+
+        # Main results under every condition; one task per condition and feature
+        non_twin = [i for i, s in enumerate(SUBJECT_IDS) if s not in TWIN_IDS]
+        base_kw = {"n_permutations": n_permutations, "seed": seed}
+        tasks = []
+        for fid in all_fids:
+            X = X_all[fid]
+            sums = X.sum(axis=3, keepdims=True)
+            X_pattern = np.divide(X, sums, out=np.zeros_like(X), where=sums > 0)
+            tasks += [
+                (("check2", fid), X, {**base_kw, "pairing": "all"}),
+                (("baseline", fid), X, {**base_kw, "keep_arrays": fid in edge_fids}),
+                (("check1", fid), X, {**base_kw, "zero_rule": True}),
+                (("check3", fid), X[:, :, :6], base_kw),
+                (("check4", fid), X[non_twin], base_kw),
+                (("check5", fid), X_pattern, {**base_kw, "element_level": False}),
+                (("check6", fid), X_avg[fid], base_kw),
+            ]
+        tasks += [(("check7", fid), X_dwpli[fid], base_kw) for fid in DWPLI_FEATURES]
+        tasks += [(("check8", fid), X_fixed[fid], base_kw) for fid in binary_fids]
+        print(f"Computing main results for {len(tasks)} condition x feature combinations...")
+        res = dict(executor.map(_main_results_task, tasks))
+
+    base = {fid: res[("baseline", fid)] for fid in all_fids}
+
+    # The baseline must reproduce the Phase 2 and Phase 4 recording-level values
+    max_diff = max(
+        max(abs(base[fid]["U_1"] - u_main[fid]["ses-1"]["U_global"]),
+            abs(base[fid]["U_2"] - u_main[fid]["ses-2"]["U_global"]),
+            abs(base[fid]["I_diff"] - i_main[fid]["I_diff"]),
+            abs(base[fid]["acc_mean"] - i_main[fid]["acc_mean"]))
+        for fid in all_fids
+    )
+    print(f"Baseline vs Phases 2 and 4 (U_1, U_2, I_diff, accuracy): max |difference| = {max_diff:.2e}")
+
+    checks = [
+        ("Check 1", "0/0 Rule (0/0 = 0)", "check1", all_fids, "Recording-level S has no 0/0 case, so only the class counts can change"),
+        ("Check 2", "Epoch Pairing (all K x K pairs)", "check2", all_fids, "J and S averaged over all 144 epoch pairs"),
+        ("Check 3", "Number of Epochs (K = 6)", "check3", all_fids, "First 6 epochs"),
+        ("Check 4", "Twin Exclusion (N = 17)", "check4", all_fids, "sub-NORB00086 and sub-NORB00087 excluded"),
+        ("Check 5", "Pattern Only (vector / sum)", "check5", all_fids, "Recording level only, so no class counts"),
+        ("Check 6", "Average Reference", "check6", all_fids, "All 26 features rebuilt after raw.set_eeg_reference('average')"),
+        ("Check 7", "Volume Conduction (debiased wPLI)", "check7", list(DWPLI_FEATURES),
+         "wpli2_debiased across the 12 epochs (one network per recording, K = 1), negative values set to 0; "
+         "frequencies below 5 cycles per 2.56 s epoch (~2 Hz) are not estimated"),
+        ("Check 8", "Fixed-Density Binarisation", "check8", binary_fids, ""),
+    ]
     t4_rows = []
-    pairs_19 = list(combinations(range(len(SUBJECT_IDS)), 2))
-    diag_19 = np.eye(len(SUBJECT_IDS), dtype=bool)
-    
-    # =========================================================================
-    # Check 1: 0/0 Replacement (0/0 -> 0 instead of NaN)
-    # =========================================================================
-    print("[1/9] Evaluating Check 1: 0/0 Replacement Rule (0/0 = 0)...")
-    check1_fids = ["f01", "f02", "f03", "f10", "f11", "f12", "f19", "f20"]
-    for fid in check1_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        
-        # Universality ses-1 with 0/0 -> 0
-        s1_vals = []
-        for a, b in pairs_19:
-            xa, xb = X[a, 0, :, :], X[b, 0, :, :]
-            mn = np.minimum(xa, xb)
-            mx = np.maximum(xa, xb)
-            with np.errstate(divide="ignore", invalid="ignore"):
-                j = np.where(mx > 0, mn / mx, 0.0)
-            s1_vals.append(float(np.mean(j)))
-        u1_zero = float(np.mean(s1_vals))
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        delta = u1_zero - base_u1
-        
-        t4_rows.append({
-            "Check ID": "Check 1",
-            "Sensitivity Analysis": "0/0 Rule (0/0 = 0)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_zero, 4),
-            "Delta": round(delta, 4),
-            "Pct Change (%)": round((delta / base_u1) * 100.0, 2) if base_u1 > 0 else 0.0,
-            "Conclusion": "Conserved (difference < 0.01)" if abs(delta) < 0.01 else "Moderate shift"
-        })
-        
-    # =========================================================================
-    # Check 2: Combinatorial Epoch Pairing (All 12x12 = 144 pairs)
-    # =========================================================================
-    print("[2/9] Evaluating Check 2: Combinatorial Epoch Pairing (144 pairs)...")
-    check2_fids = ["f01", "f04", "f05", "f06", "f10", "f13", "f19", "f21"]
-    for fid in check2_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        
-        # U1 with 144 pairings
-        s1_comb = []
-        for a, b in pairs_19:
-            xa, xb = X[a, 0, :, :], X[b, 0, :, :]
-            epoch_s = []
-            for k1 in range(N_EPOCHS):
-                for k2 in range(N_EPOCHS):
-                    num = np.sum(np.minimum(xa[k1], xb[k2]))
-                    den = np.sum(np.maximum(xa[k1], xb[k2]))
-                    epoch_s.append(num / den if den > 0 else 0.0)
-            s1_comb.append(float(np.mean(epoch_s)))
-        u1_comb = float(np.mean(s1_comb))
-        
-        # Identifiability M with 144 pairings
-        M_comb = np.zeros((19, 19), dtype=np.float64)
-        for a in range(19):
-            for b in range(19):
-                xa, xb = X[a, 0, :, :], X[b, 1, :, :]
-                epoch_s = []
-                for k1 in range(N_EPOCHS):
-                    for k2 in range(N_EPOCHS):
-                        num = np.sum(np.minimum(xa[k1], xb[k2]))
-                        den = np.sum(np.maximum(xa[k1], xb[k2]))
-                        epoch_s.append(num / den if den > 0 else 0.0)
-                M_comb[a, b] = float(np.mean(epoch_s))
-                
-        i_self_c = float(np.mean(np.diag(M_comb)))
-        i_others_c = float((np.sum(M_comb) - np.sum(np.diag(M_comb))) / (19 * 18))
-        idiff_comb = float((i_self_c - i_others_c) * 100.0)
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        base_idiff = i_base[fid]["I_diff"]
-        
-        t4_rows.append({
-            "Check ID": "Check 2",
-            "Sensitivity Analysis": "Combinatorial Epoch Pairing (144 pairs)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_comb, 4),
-            "Delta": round(u1_comb - base_u1, 4),
-            "Pct Change (%)": round(((u1_comb - base_u1) / base_u1) * 100.0, 2),
-            "Conclusion": "Conserved"
-        })
-        t4_rows.append({
-            "Check ID": "Check 2",
-            "Sensitivity Analysis": "Combinatorial Epoch Pairing (144 pairs)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "I_diff (%)",
-            "Baseline": round(base_idiff, 2),
-            "Perturbed": round(idiff_comb, 2),
-            "Delta": round(idiff_comb - base_idiff, 2),
-            "Pct Change (%)": round(((idiff_comb - base_idiff) / base_idiff) * 100.0, 2) if base_idiff != 0 else 0.0,
-            "Conclusion": "Direction preserved" if (idiff_comb > 0) == (base_idiff > 0) else "Inverted"
-        })
+    for check_id, check_name, key, fids, note in checks:
+        for fid in fids:
+            row_note = note
+            if key == "check7":
+                lo, hi = DWPLI_FEATURES[fid]
+                row_note = f"{note}; {lo}-{hi} Hz"
+            elif key == "check8":
+                family = FEATURE_DEFS[fid]["band"]
+                row_note = f"m = {m_edges[family]} strongest edges ({family} median GCC edge count)"
+            t4_rows.append(t4_row(check_id, check_name, fid, base[fid], res[(key, fid)], row_note))
+        same_sign = sum(r["I_diff same sign"] for r in t4_rows if r["Check ID"] == check_id)
+        print(f"[{check_id}] {check_name}: {len(fids)} features | I_diff sign kept in {same_sign}/{len(fids)}")
 
-    # =========================================================================
-    # Check 3: Epoch Window Length (K = 6 vs K = 12)
-    # =========================================================================
-    print("[3/9] Evaluating Check 3: Truncated Epoch Count (K = 6)...")
-    check3_fids = ["f01", "f04", "f05", "f06", "f10", "f13", "f19", "f21"]
-    for fid in check3_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        
-        # U1 with K=6
-        s1_k6 = [recording_S(X[a, 0, :6, :], X[b, 0, :6, :]) for a, b in pairs_19]
-        u1_k6 = float(np.mean(s1_k6))
-        
-        # Identifiability M with K=6
-        M_k6 = np.zeros((19, 19), dtype=np.float64)
-        for a in range(19):
-            for b in range(19):
-                M_k6[a, b] = recording_S(X[a, 0, :6, :], X[b, 1, :6, :])
-        i_self_k6 = float(np.mean(np.diag(M_k6)))
-        i_others_k6 = float((np.sum(M_k6) - np.sum(np.diag(M_k6))) / (19 * 18))
-        idiff_k6 = float((i_self_k6 - i_others_k6) * 100.0)
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        base_idiff = i_base[fid]["I_diff"]
-        
-        t4_rows.append({
-            "Check ID": "Check 3",
-            "Sensitivity Analysis": "Window Length (K = 6 epochs)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_k6, 4),
-            "Delta": round(u1_k6 - base_u1, 4),
-            "Pct Change (%)": round(((u1_k6 - base_u1) / base_u1) * 100.0, 2),
-            "Conclusion": "Stable"
-        })
-        t4_rows.append({
-            "Check ID": "Check 3",
-            "Sensitivity Analysis": "Window Length (K = 6 epochs)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "I_diff (%)",
-            "Baseline": round(base_idiff, 2),
-            "Perturbed": round(idiff_k6, 2),
-            "Delta": round(idiff_k6 - base_idiff, 2),
-            "Pct Change (%)": round(((idiff_k6 - base_idiff) / base_idiff) * 100.0, 2) if base_idiff != 0 else 0.0,
-            "Conclusion": "Direction preserved"
-        })
-
-    # =========================================================================
-    # Check 4: Twin Exclusion (N = 17 independent infants)
-    # =========================================================================
-    print("[4/9] Evaluating Check 4: Twin Exclusion (N = 17)...")
-    non_twin_idxs = [i for i, s in enumerate(SUBJECT_IDS) if s not in ("sub-NORB00086", "sub-NORB00087")]
-    n_sub17 = len(non_twin_idxs)
-    pairs_17 = list(combinations(non_twin_idxs, 2))
-    
-    check4_fids = ["f01", "f04", "f05", "f06", "f07", "f10", "f12", "f13", "f19", "f21"]
-    for fid in check4_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        M = np.load(OUTPUT_TENSORS_DIR / f"M_mat_{fid}.npy")
-        
-        # U1 with N=17
-        s1_n17 = [recording_S(X[a, 0, :, :], X[b, 0, :, :]) for a, b in pairs_17]
-        u1_n17 = float(np.mean(s1_n17))
-        
-        # M with N=17
-        M_sub = M[np.ix_(non_twin_idxs, non_twin_idxs)]
-        i_self_n17 = float(np.mean(np.diag(M_sub)))
-        i_others_n17 = float((np.sum(M_sub) - np.sum(np.diag(M_sub))) / (n_sub17 * (n_sub17 - 1)))
-        idiff_n17 = float((i_self_n17 - i_others_n17) * 100.0)
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        base_idiff = i_base[fid]["I_diff"]
-        
-        t4_rows.append({
-            "Check ID": "Check 4",
-            "Sensitivity Analysis": "Twin Exclusion (N = 17)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_n17, 4),
-            "Delta": round(u1_n17 - base_u1, 4),
-            "Pct Change (%)": round(((u1_n17 - base_u1) / base_u1) * 100.0, 2),
-            "Conclusion": "Conserved"
-        })
-        t4_rows.append({
-            "Check ID": "Check 4",
-            "Sensitivity Analysis": "Twin Exclusion (N = 17)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "I_diff (%)",
-            "Baseline": round(base_idiff, 2),
-            "Perturbed": round(idiff_n17, 2),
-            "Delta": round(idiff_n17 - base_idiff, 2),
-            "Pct Change (%)": round(((idiff_n17 - base_idiff) / base_idiff) * 100.0, 2) if base_idiff != 0 else 0.0,
-            "Conclusion": "Robust to genetics"
-        })
-
-    # =========================================================================
-    # Check 5: Pattern-Only Normalization (L1 sum = 1)
-    # =========================================================================
-    print("[5/9] Evaluating Check 5: Pattern-Only Normalization (L1 norm)...")
-    check5_fids = ["f01", "f04", "f05", "f06", "f07", "f19", "f21"]
-    for fid in check5_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        
-        sums = np.sum(X, axis=3, keepdims=True)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            X_norm = np.where(sums > 0, X / sums, 0.0)
-            
-        s1_norm = [recording_S(X_norm[a, 0, :, :], X_norm[b, 0, :, :]) for a, b in pairs_19]
-        u1_norm = float(np.mean(s1_norm))
-        
-        M_norm = np.zeros((19, 19), dtype=np.float64)
-        for a in range(19):
-            for b in range(19):
-                M_norm[a, b] = recording_S(X_norm[a, 0, :, :], X_norm[b, 1, :, :])
-        i_self_norm = float(np.mean(np.diag(M_norm)))
-        i_others_norm = float((np.sum(M_norm) - np.sum(np.diag(M_norm))) / (19 * 18))
-        idiff_norm = float((i_self_norm - i_others_norm) * 100.0)
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        base_idiff = i_base[fid]["I_diff"]
-        
-        t4_rows.append({
-            "Check ID": "Check 5",
-            "Sensitivity Analysis": "Pattern-Only (L1 normalization)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_norm, 4),
-            "Delta": round(u1_norm - base_u1, 4),
-            "Pct Change (%)": round(((u1_norm - base_u1) / base_u1) * 100.0, 2),
-            "Conclusion": "Conserved"
-        })
-        t4_rows.append({
-            "Check ID": "Check 5",
-            "Sensitivity Analysis": "Pattern-Only (L1 normalization)",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "I_diff (%)",
-            "Baseline": round(base_idiff, 2),
-            "Perturbed": round(idiff_norm, 2),
-            "Delta": round(idiff_norm - base_idiff, 2),
-            "Pct Change (%)": round(((idiff_norm - base_idiff) / base_idiff) * 100.0, 2) if base_idiff != 0 else 0.0,
-            "Conclusion": "Shape preserves individuality"
-        })
-
-    # =========================================================================
-    # Check 6: Reference Montage (Average Reference vs Original)
-    # =========================================================================
-    print("[6/9] Evaluating Check 6: Reference Montage (Average Reference)...")
-    p_triu, q_triu = np.triu_indices(19, k=1)
-    X_avg = np.zeros((19, 2, 12, 171), dtype=np.float64)
-    
-    for sub_idx, subj in enumerate(SUBJECT_IDS):
-        for ses_idx, ses in enumerate(SESSIONS):
-            edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
-            ann_df = load_annotations(subj, ses)
-            if ann_df is None:
-                continue
-            raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
-            raw.pick(NODE_LABELS)
-            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
-            
-            for ep_idx, seg in enumerate(segments):
-                seg_avg = seg - np.mean(seg, axis=0, keepdims=True)
-                c_mat = np.abs(np.corrcoef(seg_avg))
-                X_avg[sub_idx, ses_idx, ep_idx, :] = c_mat[p_triu, q_triu]
-                
-    u1_avg = float(np.mean([recording_S(X_avg[a, 0], X_avg[b, 0]) for a, b in pairs_19]))
-    M_avg = np.zeros((19, 19), dtype=np.float64)
-    for a in range(19):
-        for b in range(19):
-            M_avg[a, b] = recording_S(X_avg[a, 0], X_avg[b, 1])
-    idiff_avg = float((np.mean(np.diag(M_avg)) - np.mean(M_avg[~diag_19])) * 100.0)
-    
-    base_u1 = u_base["f01"]["ses-1"]["U_global"]
-    base_idiff = i_base["f01"]["I_diff"]
-    
-    t4_rows.append({
-        "Check ID": "Check 6",
-        "Sensitivity Analysis": "Reference Montage (Average Reference)",
-        "Feature ID": "f01",
-        "Feature Name": "broadband_weighted_correlation",
-        "Metric": "U_1",
-        "Baseline": round(base_u1, 4),
-        "Perturbed": round(u1_avg, 4),
-        "Delta": round(u1_avg - base_u1, 4),
-        "Pct Change (%)": round(((u1_avg - base_u1) / base_u1) * 100.0, 2),
-        "Conclusion": "Conserved under re-referencing"
-    })
-    t4_rows.append({
-        "Check ID": "Check 6",
-        "Sensitivity Analysis": "Reference Montage (Average Reference)",
-        "Feature ID": "f01",
-        "Feature Name": "broadband_weighted_correlation",
-        "Metric": "I_diff (%)",
-        "Baseline": round(base_idiff, 2),
-        "Perturbed": round(idiff_avg, 2),
-        "Delta": round(idiff_avg - base_idiff, 2),
-        "Pct Change (%)": round(((idiff_avg - base_idiff) / base_idiff) * 100.0, 2),
-        "Conclusion": "Identifiability preserved"
-    })
-
-    # =========================================================================
-    # Check 7: Volume Conduction Control (Debiased wPLI vs Pearson |r|)
-    # =========================================================================
-    print("[7/9] Evaluating Check 7: Volume Conduction Control (dwPLI)...")
-    X_dwpli = np.zeros((19, 2, 12, 171), dtype=np.float64)
-    
-    for sub_idx, subj in enumerate(SUBJECT_IDS):
-        for ses_idx, ses in enumerate(SESSIONS):
-            edf_path = DATASET_PATH / subj / ses / "eeg" / f"{subj}_{ses}_task-EEG_eeg.edf"
-            ann_df = load_annotations(subj, ses)
-            if ann_df is None:
-                continue
-            raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
-            raw.pick(NODE_LABELS)
-            segments = segment_eeg_from_annotations(raw, ann_df, label="eyes_closed")[:N_EPOCHS]
-            
-            for ep_idx, seg in enumerate(segments):
-                analytic: np.ndarray = np.asarray(signal.hilbert(seg, axis=1))
-                zx = analytic[p_triu, :]
-                zy = analytic[q_triu, :]
-                cross = zx * np.conj(zy)
-                im = np.imag(cross)
-                s_im = np.sum(im, axis=1)
-                s_abs = np.sum(np.abs(im), axis=1)
-                s_sq = np.sum(im**2, axis=1)
-                num = s_im**2 - s_sq
-                den = s_abs**2 - s_sq
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    dw = np.where(den > 0, np.sqrt(np.maximum(0.0, num / den)), 0.0)
-                X_dwpli[sub_idx, ses_idx, ep_idx, :] = dw
-                
-    u1_dw = float(np.mean([recording_S(X_dwpli[a, 0], X_dwpli[b, 0]) for a, b in pairs_19]))
-    M_dw = np.zeros((19, 19), dtype=np.float64)
-    for a in range(19):
-        for b in range(19):
-            M_dw[a, b] = recording_S(X_dwpli[a, 0], X_dwpli[b, 1])
-    idiff_dw = float((np.mean(np.diag(M_dw)) - np.mean(M_dw[~diag_19])) * 100.0)
-    
-    t4_rows.append({
-        "Check ID": "Check 7",
-        "Sensitivity Analysis": "Volume Conduction Control (dwPLI)",
-        "Feature ID": "f01",
-        "Feature Name": "broadband_weighted_correlation (dwPLI)",
-        "Metric": "U_1",
-        "Baseline": round(base_u1, 4),
-        "Perturbed": round(u1_dw, 4),
-        "Delta": round(u1_dw - base_u1, 4),
-        "Pct Change (%)": round(((u1_dw - base_u1) / base_u1) * 100.0, 2),
-        "Conclusion": "Universality robust without zero-lag"
-    })
-    t4_rows.append({
-        "Check ID": "Check 7",
-        "Sensitivity Analysis": "Volume Conduction Control (dwPLI)",
-        "Feature ID": "f01",
-        "Feature Name": "broadband_weighted_correlation (dwPLI)",
-        "Metric": "I_diff (%)",
-        "Baseline": round(base_idiff, 2),
-        "Perturbed": round(idiff_dw, 2),
-        "Delta": round(idiff_dw - base_idiff, 2),
-        "Pct Change (%)": round(((idiff_dw - base_idiff) / base_idiff) * 100.0, 2),
-        "Conclusion": "Positive identifiability conserved"
-    })
-
-    # =========================================================================
-    # Check 8: Fixed-Density Binarization (Top-58 edges vs Adaptive GCC)
-    # =========================================================================
-    print("[8/9] Evaluating Check 8: Fixed-Density Binarization (Top-58 Edges)...")
-    X_f01 = np.load(OUTPUT_TENSORS_DIR / "X_f01.npy")
-    m_edges = 58
-    X_topm = np.zeros_like(X_f01)
-    
-    for sub in range(19):
-        for ses in range(2):
-            for ep in range(N_EPOCHS):
-                vec = X_f01[sub, ses, ep, :]
-                thr = np.partition(vec, -m_edges)[-m_edges]
-                X_topm[sub, ses, ep, :] = (vec >= thr).astype(float)
-                
-    u1_topm = float(np.mean([recording_S(X_topm[a, 0], X_topm[b, 0]) for a, b in pairs_19]))
-    M_topm = np.zeros((19, 19), dtype=np.float64)
-    for a in range(19):
-        for b in range(19):
-            M_topm[a, b] = recording_S(X_topm[a, 0], X_topm[b, 1])
-    idiff_topm = float((np.mean(np.diag(M_topm)) - np.mean(M_topm[~diag_19])) * 100.0)
-    
-    base_u1_f10 = u_base["f10"]["ses-1"]["U_global"]
-    base_idiff_f10 = i_base["f10"]["I_diff"]
-    
-    t4_rows.append({
-        "Check ID": "Check 8",
-        "Sensitivity Analysis": "Fixed-Density Binarization (Top-58 Edges)",
-        "Feature ID": "f10",
-        "Feature Name": "broadband_binary_adjacency (Fixed Density)",
-        "Metric": "U_1",
-        "Baseline": round(base_u1_f10, 4),
-        "Perturbed": round(u1_topm, 4),
-        "Delta": round(u1_topm - base_u1_f10, 4),
-        "Pct Change (%)": round(((u1_topm - base_u1_f10) / base_u1_f10) * 100.0, 2),
-        "Conclusion": "Conserved vs GCC thresholding"
-    })
-    t4_rows.append({
-        "Check ID": "Check 8",
-        "Sensitivity Analysis": "Fixed-Density Binarization (Top-58 Edges)",
-        "Feature ID": "f10",
-        "Feature Name": "broadband_binary_adjacency (Fixed Density)",
-        "Metric": "I_diff (%)",
-        "Baseline": round(base_idiff_f10, 2),
-        "Perturbed": round(idiff_topm, 2),
-        "Delta": round(idiff_topm - base_idiff_f10, 2),
-        "Pct Change (%)": round(((idiff_topm - base_idiff_f10) / base_idiff_f10) * 100.0, 2),
-        "Conclusion": "Identifiability identical to GCC"
-    })
-
-    # =========================================================================
-    # Check 9: Physical Distance Regression (Residualizing 3D Distance)
-    # =========================================================================
-    print("[9/9] Evaluating Check 9: Physical Distance Regression...")
+    # Check 9: electrode distance, edge features
+    print("[Check 9] Electrode distance: Spearman rho with distance and within- vs between-region on residuals...")
     distances = get_electrode_3d_distances()
-    check9_fids = ["f01", "f05", "f19", "f21"]
-    
-    for fid in check9_fids:
-        meta = FEATURE_DEFS[fid]
-        X = np.load(OUTPUT_TENSORS_DIR / f"X_{fid}.npy")
-        X_adj = np.zeros_like(X)
-        
-        for sub in range(19):
-            for ses in range(2):
-                for ep in range(N_EPOCHS):
-                    vec = X[sub, ses, ep, :]
-                    poly_res = np.polyfit(distances, vec, 1)
-                    slope = float(poly_res[0])
-                    intercept = float(poly_res[1])
-                    resid = vec - (intercept + slope * distances)
-                    X_adj[sub, ses, ep, :] = resid - resid.min() + 0.01
-                    
-        u1_adj = float(np.mean([recording_S(X_adj[a, 0], X_adj[b, 0]) for a, b in pairs_19]))
-        M_adj = np.zeros((19, 19), dtype=np.float64)
-        for a in range(19):
-            for b in range(19):
-                M_adj[a, b] = recording_S(X_adj[a, 0], X_adj[b, 1])
-        idiff_adj = float((np.mean(np.diag(M_adj)) - np.mean(M_adj[~diag_19])) * 100.0)
-        
-        base_u1 = u_base[fid]["ses-1"]["U_global"]
-        base_idiff = i_base[fid]["I_diff"]
-        
-        t4_rows.append({
-            "Check ID": "Check 9",
-            "Sensitivity Analysis": "Physical Distance Regression",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "U_1",
-            "Baseline": round(base_u1, 4),
-            "Perturbed": round(u1_adj, 4),
-            "Delta": round(u1_adj - base_u1, 4),
-            "Pct Change (%)": round(((u1_adj - base_u1) / base_u1) * 100.0, 2),
-            "Conclusion": "Universality survives distance control"
-        })
-        t4_rows.append({
-            "Check ID": "Check 9",
-            "Sensitivity Analysis": "Physical Distance Regression",
-            "Feature ID": fid,
-            "Feature Name": meta["name"],
-            "Metric": "I_diff (%)",
-            "Baseline": round(base_idiff, 2),
-            "Perturbed": round(idiff_adj, 2),
-            "Delta": round(idiff_adj - base_idiff, 2),
-            "Pct Change (%)": round(((idiff_adj - base_idiff) / base_idiff) * 100.0, 2) if base_idiff != 0 else 0.0,
-            "Conclusion": "Individuality robust to distance"
-        })
+    dist_res = {fid: distance_check(base[fid], distances, B=n_permutations, seed=seed) for fid in edge_fids}
+    # BH-FDR of each global test across the edge feature sets (Step 7.4 ii)
+    for test in ("rho_U_distance", "rho_Idiff_distance", "within_minus_between_U", "within_minus_between_U_resid"):
+        q_vals = multipletests([dist_res[fid][test]["p"] for fid in edge_fids], method="fdr_bh")[1]
+        for fid, q_val in zip(edge_fids, q_vals):
+            dist_res[fid][test]["q"] = float(q_val)
+    t4b_rows = []
+    for fid in edge_fids:
+        row = {"Feature ID": fid, "Feature Name": FEATURE_DEFS[fid]["name"]}
+        for test, label in [("rho_U_distance", "rho(U(e), distance)"), ("rho_Idiff_distance", "rho(I_diff(e), distance)"),
+                            ("within_minus_between_U", "Within - between U(e)"),
+                            ("within_minus_between_U_resid", "Within - between U(e) residuals")]:
+            r = dist_res[fid][test]
+            row[label] = round(r["obs"], 4)
+            row[f"{label} 95% CI"] = f"[{r['ci_95'][0]:.4f}, {r['ci_95'][1]:.4f}]"
+            row[f"{label} p"] = round(r["p"], 4)
+            row[f"{label} q"] = round(r["q"], 4)
+        t4b_rows.append(row)
 
-    # Save Table T4
     df_t4 = pd.DataFrame(t4_rows)
     out_csv = TABLES_DIR / "Table_T4_Robustness.csv"
     df_t4.to_csv(out_csv, index=False)
-    
-    # Save JSON database
+    out_csv_b = TABLES_DIR / "Table_T4b_Electrode_Distance.csv"
+    pd.DataFrame(t4b_rows).to_csv(out_csv_b, index=False)
+
+    def recording_level(r):
+        return {k: r[k] for k in ["U_1", "U_2", "I_self", "I_others", "I_diff", "acc_forward", "acc_backward", "acc_mean", "class_counts"]}
+
     out_json = OUTPUT_TENSORS_DIR / "robustness_results.json"
     with open(out_json, "w") as f:
-        json.dump(t4_rows, f, indent=2)
-        
+        json.dump({
+            "n_permutations": n_permutations,
+            "seed": seed,
+            "m_edges": m_edges,
+            "baseline_max_abs_diff_vs_phases_2_4": max_diff,
+            "baseline": {fid: recording_level(base[fid]) for fid in all_fids},
+            "checks": {key: {fid: recording_level(res[(key, fid)]) for fid in fids} for _cid, _name, key, fids, _note in checks},
+            "check9_distance": dist_res,
+        }, f, indent=2)
+
     print("=" * 80)
-    print(f"Table T4 successfully generated ({len(df_t4)} check conditions evaluated)!")
-    print(f"CSV saved to: {out_csv}")
+    print(f"Table T4 successfully generated ({len(df_t4)} check x feature rows) and Table T4b ({len(t4b_rows)} edge features)!")
+    print(f"CSV saved to: {out_csv} and {out_csv_b}")
     print(f"JSON saved to: {out_json}")
     print("=" * 80)
     return df_t4

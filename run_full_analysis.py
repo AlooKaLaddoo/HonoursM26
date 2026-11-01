@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--start-phase", type=int, default=2, help="Phase number to start from (default: 2)")
     parser.add_argument("--permutations", type=int, default=200000, help="Number of permutations and bootstrap draws (default: 2,00,000)")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel worker processes (default: 8)")
+    parser.add_argument("--robustness-permutations", type=int, default=10000, help="Permutations for the element-level tests of each Phase 7 robustness check (default: 10,000)")
     args = parser.parse_args()
 
     t_start = time.time()
@@ -46,7 +47,7 @@ def main():
 
     if args.start_phase <= 7:
         mod7 = importlib.import_module("analysis_pipeline.07_robustness_checks")
-        mod7.run_robustness_checks()
+        mod7.run_robustness_checks(n_permutations=args.robustness_permutations, n_workers=args.workers)
 
     if args.start_phase <= 8:
         mod8 = importlib.import_module("analysis_pipeline.08_export_tables")
