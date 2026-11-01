@@ -2,7 +2,7 @@
 Phase 7: Robustness & Sensitivity Checks (Step 8 - Table T4)
 Reruns the main results - U_1, U_2, I_diff, identification accuracy and the Step 5a class counts - with one
 change at a time (furtherAnalysis Step 8); everything else is kept as in the main analysis:
-  1. 0/0 rule: 0/0 set to 0 instead of excluded (all features)
+  1. 0/0 rule: 0/0 set to 0 instead of excluded, for J and S (all features)
   2. Epoch pairing: J and S averaged over all K x K epoch pairs instead of (k, k) (all features)
   3. Number of epochs: K = 6 (first 6 epochs) instead of K = 12 (all features)
   4. Twins: sub-NORB00086 and sub-NORB00087 excluded, N = 17 (all features)
@@ -44,21 +44,29 @@ if __package__ is None or __package__ == "":
         FEATURE_DEFS,
         FREQUENCY_BANDS,
         N_EPOCHS,
+        N_PERMUTATIONS,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
+        SEED,
         SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from analysis_pipeline.utils import (
+        bootstrap_ci,
+        bootstrap_counts,
+        bootstrap_draws,
+        bootstrap_p,
         compute_all_broadband_features,
         compute_binary_features,
         extract_band_matrices,
         extract_matrix_edge_vector,
+        identification_accuracy,
         load_annotations,
         recording_S,
         segment_eeg_from_annotations,
+        weighted_nanmean,
     )
 else:
     from .config import (
@@ -68,21 +76,29 @@ else:
         FEATURE_DEFS,
         FREQUENCY_BANDS,
         N_EPOCHS,
+        N_PERMUTATIONS,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
+        SEED,
         SESSIONS,
         SUBJECT_IDS,
         TABLES_DIR,
     )
     from .utils import (
+        bootstrap_ci,
+        bootstrap_counts,
+        bootstrap_draws,
+        bootstrap_p,
         compute_all_broadband_features,
         compute_binary_features,
         extract_band_matrices,
         extract_matrix_edge_vector,
+        identification_accuracy,
         load_annotations,
         recording_S,
         segment_eeg_from_annotations,
+        weighted_nanmean,
     )
 
 # Band features: weighted edge weight and binary adjacency per band (as in Phase 1)
@@ -172,20 +188,11 @@ def identifiability_elem_p(M_elem: np.ndarray, obs_diff: np.ndarray, n_permutati
         perm = rng.permutation(n)
         diag_sum, diag_count = filled[rows, perm].sum(axis=0), valid[rows, perm].sum(axis=0)
         with np.errstate(divide="ignore", invalid="ignore"):
-            null_diff = (diag_sum / diag_count - (total_sum - diag_sum) / (total_count - diag_count)) * 100.0
+            null_diff = diag_sum / diag_count - (total_sum - diag_sum) / (total_count - diag_count)
         count_ge += null_diff >= obs_diff
     p = (1.0 + count_ge) / (1.0 + n_permutations)
-    p[np.isnan(obs_diff) | (obs_diff <= 1e-6)] = 1.0  # cannot show "more like oneself"
+    p[np.isnan(obs_diff)] = 1.0  # no observed I_diff(e): 0/0 in every comparison
     return p
-
-
-def identification_accuracy(M: np.ndarray):
-    """1-NN accuracy in % (Step 4 item 4); a tie for the maximum counts as incorrect."""
-    idx = np.arange(M.shape[0])
-    row_max, col_max = M.max(axis=1), M.max(axis=0)
-    fwd = (np.argmax(M, axis=1) == idx) & (np.sum(M == row_max[:, None], axis=1) == 1)
-    bwd = (np.argmax(M, axis=0) == idx) & (np.sum(M == col_max[None, :], axis=0) == 1)
-    return float(np.mean(fwd) * 100.0), float(np.mean(bwd) * 100.0)
 
 
 def main_results(X: np.ndarray, n_permutations: int, seed: int, pairing: str = "diag",
@@ -203,7 +210,7 @@ def main_results(X: np.ndarray, n_permutations: int, seed: int, pairing: str = "
     q_u = []
     pair_J = []
     for s in range(2):
-        out[f"U_{s + 1}"] = float(np.mean([recording_S(X[a, s][k1], X[b, s][k2]) for a, b in pairs]))
+        out[f"U_{s + 1}"] = float(np.nanmean([recording_S(X[a, s][k1], X[b, s][k2], zero_rule) for a, b in pairs]))
         if element_level:
             G = np.stack([cross_J(X[a, s], X[b, s], k1, k2, zero_rule) for a, b in pairs])
             J_s = np.diagonal(G, axis1=1, axis2=2)  # (n_pairs, dim)
@@ -212,11 +219,11 @@ def main_results(X: np.ndarray, n_permutations: int, seed: int, pairing: str = "
             pair_J.append(J_s)
             out[f"U_elem_{s + 1}"] = U_elem
 
-    M = np.array([[recording_S(X[a, 0][k1], X[b, 1][k2]) for b in range(n)] for a in range(n)])
+    M = np.array([[recording_S(X[a, 0][k1], X[b, 1][k2], zero_rule) for b in range(n)] for a in range(n)])
     off = ~np.eye(n, dtype=bool)
-    out["I_self"] = float(np.mean(np.diag(M)))
-    out["I_others"] = float(np.mean(M[off]))
-    out["I_diff"] = (out["I_self"] - out["I_others"]) * 100.0
+    out["I_self"] = float(np.nanmean(np.diag(M)))
+    out["I_others"] = float(np.nanmean(M[off]))
+    out["I_diff"] = out["I_self"] - out["I_others"]
     out["acc_forward"], out["acc_backward"] = identification_accuracy(M)
     out["acc_mean"] = (out["acc_forward"] + out["acc_backward"]) / 2.0
 
@@ -224,7 +231,7 @@ def main_results(X: np.ndarray, n_permutations: int, seed: int, pairing: str = "
     if element_level:
         M_elem = np.array([[nan_mean(jaccard_ratio(X[a, 0][k1], X[b, 1][k2], zero_rule), axis=0)
                             for b in range(n)] for a in range(n)])  # (n, n, dim)
-        I_diff_elem = (nan_mean(M_elem[~off], axis=0) - nan_mean(M_elem[off], axis=0)) * 100.0
+        I_diff_elem = nan_mean(M_elem[~off], axis=0) - nan_mean(M_elem[off], axis=0)
         q_idiff = np.asarray(multipletests(identifiability_elem_p(M_elem, I_diff_elem, n_permutations, rng), method="fdr_bh")[1])
         sig_u = (q_u[0] < 0.05) & (q_u[1] < 0.05)
         sig_i = q_idiff < 0.05
@@ -413,12 +420,10 @@ def within_minus_between(Y: np.ndarray, within: np.ndarray, x: np.ndarray | None
     return out
 
 
-def bootstrap_summary(obs: float, boot: np.ndarray, B: int) -> dict:
+def bootstrap_summary(obs: float, boot: np.ndarray) -> dict:
     """Observed value, 95% percentile CI and two-sided bootstrap p (Step 7.2 item 4, floor 1/B)."""
-    boot = boot[np.isfinite(boot)]
-    p = 2.0 * min(np.mean(boot <= 0), np.mean(boot >= 0)) if len(boot) else 1.0
-    lo, hi = np.percentile(boot, [2.5, 97.5]) if len(boot) else (np.nan, np.nan)
-    return {"obs": float(obs), "ci_95": [float(lo), float(hi)], "p": float(min(max(p, 1.0 / B), 1.0))}
+    ci_low, ci_high = bootstrap_ci(boot)
+    return {"obs": float(obs), "ci_95": [float(ci_low), float(ci_high)], "p": float(bootstrap_p(boot))}
 
 
 def distance_check(base: dict, distances: np.ndarray, B: int, seed: int) -> dict:
@@ -429,31 +434,24 @@ def distance_check(base: dict, distances: np.ndarray, B: int, seed: int) -> dict
     """
     n = base["M_elem"].shape[0]
     within = np.array([NODE_REGIONS[e.split("-")[0]] == NODE_REGIONS[e.split("-")[1]] for e in EDGE_LABELS])
-    rng = np.random.default_rng(seed)
-    idx = rng.integers(0, n, (B, n))
-    c = np.bincount((idx + n * np.arange(B)[:, None]).ravel(), minlength=B * n).reshape(B, n).astype(np.float64)
+    c = bootstrap_counts(bootstrap_draws(n, B, seed), n)
     p_i, q_i = np.triu_indices(n, k=1)
     W_pairs = c[:, p_i] * c[:, q_i]
 
-    def weighted_mean(W, V):
-        valid = ~np.isnan(V)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            return (W @ np.where(valid, V, 0.0)) / (W @ valid)
-
     U_obs = (base["U_elem_1"] + base["U_elem_2"]) / 2.0
-    U_boot = (weighted_mean(W_pairs, base["pair_J"][0]) + weighted_mean(W_pairs, base["pair_J"][1])) / 2.0
+    U_boot = (weighted_nanmean(W_pairs, base["pair_J"][0]) + weighted_nanmean(W_pairs, base["pair_J"][1])) / 2.0
     M_elem = base["M_elem"]
     off = ~np.eye(n, dtype=bool)
     W_off = (c[:, :, None] * c[:, None, :])[:, off]
-    I_diff_boot = (weighted_mean(c, M_elem[np.arange(n), np.arange(n)]) - weighted_mean(W_off, M_elem[off])) * 100.0
+    I_diff_boot = weighted_nanmean(c, M_elem[np.arange(n), np.arange(n)]) - weighted_nanmean(W_off, M_elem[off])
     I_diff_obs = base["I_diff_elem"]
 
     return {
-        "rho_U_distance": bootstrap_summary(spearman_rows(U_obs[None], distances)[0], spearman_rows(U_boot, distances), B),
-        "rho_Idiff_distance": bootstrap_summary(spearman_rows(I_diff_obs[None], distances)[0], spearman_rows(I_diff_boot, distances), B),
-        "within_minus_between_U": bootstrap_summary(within_minus_between(U_obs[None], within)[0], within_minus_between(U_boot, within), B),
+        "rho_U_distance": bootstrap_summary(spearman_rows(U_obs[None], distances)[0], spearman_rows(U_boot, distances)),
+        "rho_Idiff_distance": bootstrap_summary(spearman_rows(I_diff_obs[None], distances)[0], spearman_rows(I_diff_boot, distances)),
+        "within_minus_between_U": bootstrap_summary(within_minus_between(U_obs[None], within)[0], within_minus_between(U_boot, within)),
         "within_minus_between_U_resid": bootstrap_summary(
-            within_minus_between(U_obs[None], within, distances)[0], within_minus_between(U_boot, within, distances), B
+            within_minus_between(U_obs[None], within, distances)[0], within_minus_between(U_boot, within, distances)
         ),
     }
 
@@ -476,7 +474,7 @@ def t4_row(check_id: str, check_name: str, fid: str, base: dict, pert: dict, not
     return row
 
 
-def run_robustness_checks(n_permutations: int = 10000, n_workers: int = 8, seed: int = 42):
+def run_robustness_checks(n_permutations: int = N_PERMUTATIONS, n_workers: int = 8, seed: int = SEED):
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
     n_subs = len(SUBJECT_IDS)
     print("=" * 80)
@@ -560,7 +558,7 @@ def run_robustness_checks(n_permutations: int = 10000, n_workers: int = 8, seed:
     print(f"Baseline vs Phases 2 and 4 (U_1, U_2, I_diff, accuracy): max |difference| = {max_diff:.2e}")
 
     checks = [
-        ("Check 1", "0/0 Rule (0/0 = 0)", "check1", all_fids, "Recording-level S has no 0/0 case, so only the class counts can change"),
+        ("Check 1", "0/0 Rule (0/0 = 0)", "check1", all_fids, "0/0 = 0 for J and for S (S is 0/0 only where both epoch vectors are all zero)"),
         ("Check 2", "Epoch Pairing (all K x K pairs)", "check2", all_fids, "J and S averaged over all 144 epoch pairs"),
         ("Check 3", "Number of Epochs (K = 6)", "check3", all_fids, "First 6 epochs"),
         ("Check 4", "Twin Exclusion (N = 17)", "check4", all_fids, "sub-NORB00086 and sub-NORB00087 excluded"),

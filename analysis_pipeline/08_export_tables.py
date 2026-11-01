@@ -2,7 +2,10 @@
 Phase 8: Export Tables T1 through T6 (CSV & Markdown formats).
 Compiles results from all preceding phases into publication-ready tables:
   - Table T1: Global Summary (26 features; each metric as mean +/- SD, median [95% CI], p and FDR q across features)
+  - Table T1b: Interval and age correlations of Step 6 item 2 (rho with 95% CI, p and q), and the individually
+    reported infants sub-NORB00064 and sub-NORB00069
   - Table T2: Element Results (3,230 element-level evaluations across features)
+  - Table T2b: Regional universality U_s(g) per feature, session and region / region pair (Step 2 item 4)
   - Table T3: Variance Partition (Three-way LMM variance decomposition & age adjustments)
   - Table T4: Robustness & Sensitivity Checks (one row per check and feature, checks 1-8), and T4b (check 9)
   - Table T5: Cohort Bookkeeping (one row per infant: sex, ages and interval in days, epochs, twin status),
@@ -184,7 +187,7 @@ def export_all_tables():
     # TABLE T1: GLOBAL SUMMARY (26 rows)
     # ------------------------------------------------------------------
     # Each metric as mean +/- SD (stating what the SD is over), median [95% bootstrap CI], and p with its
-    # FDR q across the 26 feature sets (Step 7.1, 7.4 ii); I_diff is (I_self - I_others) x 100 as in Phase 4
+    # FDR q across the 26 feature sets (Step 7.1, 7.4 ii); I_diff and Delta U in Jaccard units (Step 7.5)
     p_triu, q_triu = np.triu_indices(len(SUBJECT_IDS), k=1)
     t1_rows = []
     for fid, meta in FEATURE_DEFS.items():
@@ -215,20 +218,25 @@ def export_all_tables():
         row["Delta U Mean ± SD (171 pairs)"] = f"{dev['delta_U_global']:+.4f} ± {np.std(delta_pairs):.4f}"
         row["Delta U Median [95% CI]"] = f"{dev['median_delta']:+.4f} {fmt_ci(dev['ci_95'], '+.4f')}"
         row["Delta U p"] = dev["p_value"]
-        # Within-session stability W_1, W_2 (SD over the 19 infants); p tests W - O > 0 (Step 3)
+        # Within-session stability W_1, W_2 and within-session identifiability W - O (SD over the 19 infants);
+        # p is the two-sided infant bootstrap test of W - O against 0 (Step 3 item 4)
         for s in (1, 2):
             ws = w[f"ses-{s}"]
             wb = ws["W_bootstrap"]
+            db = ws["diff_within_bootstrap"]
             row[f"W_{s} Mean ± SD (19 infants)"] = f"{ws['W_global']:.4f} ± {wb['sd']:.4f}"
             row[f"W_{s} Median [95% CI]"] = f"{wb['median']:.4f} {fmt_ci(wb['ci_95'])}"
+            row[f"W_{s} - O_{s} Mean ± SD (19 infants)"] = f"{ws['diff_within_global']:+.4f} ± {db['sd']:.4f}"
+            row[f"W_{s} - O_{s} Median [95% CI]"] = f"{db['median']:+.4f} {fmt_ci(db['ci_95'], '+.4f')}"
             row[f"W_{s} - O_{s} p"] = ws["diff_within_p"]
         # Identifiability (SD over the 19 diagonal cells, the 342 off-diagonal cells, and the 19 idiff(a))
-        row["I_self Mean ± SD (19 infants)"] = f"{ident['I_self']:.4f} ± {np.std(np.diag(M)):.4f}"
-        row["I_self [95% CI]"] = fmt_ci(ident["bootstrap"]["self_ci_95"])
-        row["I_others Mean ± SD (342 cells)"] = f"{ident['I_others']:.4f} ± {np.std(M[off]):.4f}"
-        row["I_others [95% CI]"] = fmt_ci(ident["bootstrap"]["others_ci_95"])
-        row["I_diff x100 Mean ± SD (19 infants)"] = f"{ident['I_diff']:+.2f} ± {np.std(ident['per_infant_idiff']):.2f}"
-        row["I_diff x100 Median [95% CI]"] = f"{ident['bootstrap']['idiff_median']:+.2f} {fmt_ci(ident['bootstrap']['idiff_ci_95'], '+.2f')}"
+        ib = ident["bootstrap"]
+        row["I_self Mean ± SD (19 infants)"] = f"{ident['I_self']:.4f} ± {np.nanstd(np.diag(M)):.4f}"
+        row["I_self Median [95% CI]"] = f"{ib['self_median']:.4f} {fmt_ci(ib['self_ci_95'])}"
+        row["I_others Mean ± SD (342 cells)"] = f"{ident['I_others']:.4f} ± {np.nanstd(M[off]):.4f}"
+        row["I_others Median [95% CI]"] = f"{ib['others_median']:.4f} {fmt_ci(ib['others_ci_95'])}"
+        row["I_diff Mean ± SD (19 infants)"] = f"{ident['I_diff']:+.4f} ± {np.nanstd(ident['per_infant_idiff']):.4f}"
+        row["I_diff Median [95% CI]"] = f"{ib['idiff_median']:+.4f} {fmt_ci(ib['idiff_ci_95'], '+.4f')}"
         row["I_diff p"] = ident["p_idiff"]
         # 1-NN identification accuracy (permutation p; accuracy is not bootstrapped, Step 7.2 item 5)
         row["Acc Forward (%)"] = round(ident["acc_forward"], 1)
@@ -236,10 +244,12 @@ def export_all_tables():
         row["Acc Backward (%)"] = round(ident["acc_backward"], 1)
         row["Acc Backward p"] = ident["p_acc_backward"]
         row["Acc Mean (%)"] = round(ident["acc_mean"], 1)
-        # Mantel test: similarity vs age difference, per session
+        row["Acc Mean p"] = ident["p_acc_mean"]
+        # Mantel test: similarity vs age difference, per session, with its infant pair bootstrap CI
         for s in (1, 2):
-            row[f"Mantel rho ses-{s}"] = round(dev[f"mantel_ses{s}"]["rho"], 4)
-            row[f"Mantel ses-{s} p"] = dev[f"mantel_ses{s}"]["p"]
+            mantel = dev[f"mantel_ses{s}"]
+            row[f"Mantel rho ses-{s} [95% CI]"] = f"{mantel['rho']:+.4f} {fmt_ci(mantel['ci_95'], '+.4f')}"
+            row[f"Mantel ses-{s} p"] = mantel["p"]
         t1_rows.append(row)
     df_t1 = pd.DataFrame(t1_rows)
     # FDR q next to every p column, across the 26 feature sets
@@ -254,7 +264,34 @@ def export_all_tables():
     df_t1.to_csv(TABLES_DIR / "Table_T1_Global_Summary.csv", index=False)
     (TABLES_DIR / "Table_T1_Global_Summary.md").write_text(df_to_markdown(df_t1))
     print(f" -> Table T1 saved: {TABLES_DIR / 'Table_T1_Global_Summary.csv'} (.csv & .md)")
-    
+
+    # ------------------------------------------------------------------
+    # TABLE T1b: INTERVAL AND AGE CORRELATIONS (26 rows, Step 6 item 2)
+    # ------------------------------------------------------------------
+    # Spearman rho over the 19 infants with its infant bootstrap CI (Step 7.5), permutation p and FDR q across the
+    # 26 feature sets, and the two infants reported individually (Step 4 item 7, Step 6 item 2)
+    corr_labels = [("self_vs_interval", "rho(self, interval)"), ("idiff_vs_interval", "rho(idiff, interval)"),
+                   ("self_vs_age1", "rho(self, age ses-1)"), ("idiff_vs_age1", "rho(idiff, age ses-1)")]
+    t1b_rows = []
+    for fid, meta in FEATURE_DEFS.items():
+        dev = dev_res[fid]
+        row = {"Feature ID": fid, "Feature Name": meta["name"]}
+        for key, label in corr_labels:
+            corr = dev["interval_corr"][key]
+            row[f"{label} [95% CI]"] = f"{corr['rho']:+.4f} {fmt_ci(corr['ci_95'], '+.4f')}"
+            row[f"{label} p"] = corr["p"]
+            row[f"{label} q"] = corr["q"]
+        for subj in SHORT_GAP_IDS:
+            ind = dev["individual_infants"][subj]
+            row[f"{subj} interval (days)"] = round(ind["gap_days"], 1)
+            row[f"{subj} self(a)"] = round(ind["self"], 4)
+            row[f"{subj} idiff(a)"] = round(ind["idiff"], 4)
+        t1b_rows.append(row)
+    df_t1b = pd.DataFrame(t1b_rows)
+    df_t1b.to_csv(TABLES_DIR / "Table_T1b_Interval_Correlations.csv", index=False)
+    (TABLES_DIR / "Table_T1b_Interval_Correlations.md").write_text(df_to_markdown(df_t1b))
+    print(f" -> Table T1b saved: {TABLES_DIR / 'Table_T1b_Interval_Correlations.csv'} (.csv & .md)")
+
     # ------------------------------------------------------------------
     # TABLE T2: ELEMENT RESULTS (3,230 rows)
     # ------------------------------------------------------------------
@@ -269,7 +306,8 @@ def export_all_tables():
         w = w_res[fid]
         ident = i_res[fid]
         tax = tax_res[fid]
-        
+        shift = u["developmental_shift"]
+
         for e in range(dim):
             label = labels[e]
             if ftype == "node":
@@ -285,7 +323,7 @@ def export_all_tables():
                 wb_flag = "Within" if r1 == r2 else "Between"
                 e_dist = edge_dists.get(label, "N/A")
                 
-            t2_rows.append({
+            row = {
                 "Feature ID": fid,
                 "Feature Name": fname,
                 "Element": label,
@@ -299,18 +337,55 @@ def export_all_tables():
                 "U_2(e)": round(u["ses-2"]["U_elem"][e], 4),
                 "p_raw_U_2": round(u["ses-2"]["p_elem"][e], 6),
                 "q_fdr_U_2": round(u["ses-2"]["q_elem"][e], 6),
+                # Delta U(e) = U_2(e) - U_1(e), paired infant bootstrap (Step 6 item 1)
+                "Delta U(e)": round(shift["delta_U_elem"][e], 4),
+                "p_raw_delta_U": round(shift["delta_U_elem_p"][e], 6),
+                "q_fdr_delta_U": round(shift["delta_U_elem_q"][e], 6),
                 "W_1(e)": round(w["ses-1"]["W_elem"][e], 4),
                 "W_2(e)": round(w["ses-2"]["W_elem"][e], 4),
-                "I_diff(e) (%)": round(ident["I_diff_elem"][e], 2),
+            }
+            # Within-session identifiability W_s(e) - O_s(e), infant bootstrap (Step 3 item 4)
+            for s in (1, 2):
+                ws = w[f"ses-{s}"]
+                row[f"W_{s}(e) - O_{s}(e)"] = round(ws["diff_within_elem"][e], 4)
+                row[f"p_raw_W_O_{s}"] = round(ws["diff_within_elem_p"][e], 6)
+                row[f"q_fdr_W_O_{s}"] = round(ws["diff_within_elem_q"][e], 6)
+            row.update({
+                "I_diff(e)": round(ident["I_diff_elem"][e], 4),
                 "p_raw_idiff": round(ident["p_elem"][e], 6),
                 "q_fdr_idiff": round(ident["q_elem"][e], 6),
                 "Taxonomy Class": tax["classes"][e],
                 "Undefined (0/0) Frac ses-1": round(u["ses-1"]["undef_frac"][e], 4),
                 "Undefined (0/0) Frac ses-2": round(u["ses-2"]["undef_frac"][e], 4)
             })
+            t2_rows.append(row)
     df_t2 = pd.DataFrame(t2_rows)
     df_t2.to_csv(TABLES_DIR / "Table_T2_Element_Results.csv", index=False)
     print(f" -> Table T2 saved: {TABLES_DIR / 'Table_T2_Element_Results.csv'} (3,230 element evaluations)")
+
+    # ------------------------------------------------------------------
+    # TABLE T2b: REGIONAL UNIVERSALITY (feature x session x region, Step 2 item 4)
+    # ------------------------------------------------------------------
+    # U_s(g) is the column mean of the pairs x regions matrix of J; SD over the 171 infant pairs, median and
+    # 95% CI from the infant pair bootstrap (Step 7.2 item 1)
+    region_sizes = df_t2.groupby(["Feature ID", "Region"]).size()
+    t2b_rows = []
+    for fid, meta in FEATURE_DEFS.items():
+        for ses in SESSIONS:
+            us = u_res[fid][ses]
+            for g in us["regions"]:
+                t2b_rows.append({
+                    "Feature ID": fid,
+                    "Feature Name": meta["name"],
+                    "Session": ses,
+                    "Region": g,
+                    "Elements": int(region_sizes[(fid, g)]),
+                    "U_s(g) Mean ± SD (171 pairs)": f"{us['regional_U'][g]:.4f} ± {us['regional_U_SD_pairs'][g]:.4f}",
+                    "U_s(g) Median [95% CI]": f"{us['regional_U_median'][g]:.4f} {fmt_ci(us['regional_U_ci_95'][g])}"
+                })
+    df_t2b = pd.DataFrame(t2b_rows)
+    df_t2b.to_csv(TABLES_DIR / "Table_T2b_Regional_Universality.csv", index=False)
+    print(f" -> Table T2b saved: {TABLES_DIR / 'Table_T2b_Regional_Universality.csv'}")
     
     # ------------------------------------------------------------------
     # TABLE T3: VARIANCE PARTITION (3,230 rows)

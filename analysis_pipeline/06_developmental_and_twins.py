@@ -1,10 +1,12 @@
 """
 Phase 6: Developmental Trajectories, Mantel Tests, & Sibling/Twin Analysis (Step 6)
 Computes:
-  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (200,000 permutations by default)
+  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (10,000 permutations by default)
   - Correlation between self-similarity M[a, a] / idiff(a) and inter-session time gap and age at ses-1 (in days)
+  - A 95% infant bootstrap CI for every correlation (Step 7.5): pair bootstrap for the Mantel rho, ordinary
+    bootstrap of the 19 infants for the interval and age correlations
   - Mean |Delta age| over pairs at each session, reported next to Delta U (Step 6 item 1 caveat)
-  - BH-FDR of every global test across the 26 feature sets (Step 7.4 ii); one seed for all permutations
+  - BH-FDR of every global test across the 26 feature sets (Step 7.4 ii); one seed for all permutations and resamples
   - Individual reports for short-gap infant sub-NORB00064 (4 days) and sub-NORB00069 (42 days)
   - Complete Sibling/Twin Analysis (Table T6) for male twin pair sub-NORB00086 and sub-NORB00087,
     at recording and element level:
@@ -16,6 +18,7 @@ Computes:
 """
 import json
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -32,21 +35,27 @@ if __package__ is None or __package__ == "":
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        N_PERMUTATIONS,
         NODE_LABELS,
         OUTPUT_TENSORS_DIR,
+        SEED,
         SESSIONS,
         SUBJECT_IDS,
     )
+    from analysis_pipeline.utils import bootstrap_ci, bootstrap_draws
 else:
     from .config import (
         DATASET_PATH,
         EDGE_LABELS,
         FEATURE_DEFS,
+        N_PERMUTATIONS,
         NODE_LABELS,
         OUTPUT_TENSORS_DIR,
+        SEED,
         SESSIONS,
         SUBJECT_IDS,
     )
+    from .utils import bootstrap_ci, bootstrap_draws
 
 # Sibling item 5: scans.tsv holds no acquisition date and every EDF header shows the anonymised date 2023-01-01
 SAME_DAY_CONTROL_NOTE = (
@@ -73,7 +82,7 @@ def load_exact_subject_ages():
     return ages_yr, ages_days
 
 
-def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 200000, seed: int = 42):
+def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = N_PERMUTATIONS, seed: int = SEED):
     """
     Mantel test (Step 6.3):
     Spearman correlation between 171 upper-triangle entries of S and D.
@@ -106,7 +115,7 @@ def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = 2000
     return obs_rho, p_two_sided
 
 
-def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 200000, seed: int = 42):
+def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = N_PERMUTATIONS, seed: int = SEED):
     """
     Spearman rank correlation with n_permutations permutations of vector y (Step 6.2).
     """
@@ -125,6 +134,38 @@ def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = 200000, se
 
     p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho))) / (1.0 + n_permutations))
     return obs_rho, p_two_sided
+
+
+def spearman_rows(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+    """Spearman rho between each row of X and the same row of Y, over the entries defined (not NaN) in both."""
+    both = ~(np.isnan(X) | np.isnan(Y))
+    rx = stats.rankdata(np.where(both, X, np.nan), axis=1, nan_policy="omit")
+    ry = stats.rankdata(np.where(both, Y, np.nan), axis=1, nan_policy="omit")
+    with warnings.catch_warnings(), np.errstate(divide="ignore", invalid="ignore"):
+        warnings.simplefilter("ignore", category=RuntimeWarning)  # a resample without variation gives NaN
+        rx = rx - np.nanmean(rx, axis=1, keepdims=True)
+        ry = ry - np.nanmean(ry, axis=1, keepdims=True)
+        return np.nansum(rx * ry, axis=1) / np.sqrt(np.nansum(rx ** 2, axis=1) * np.nansum(ry ** 2, axis=1))
+
+
+def mantel_bootstrap(S_mat: np.ndarray, D_mat: np.ndarray, draws: np.ndarray, chunk: int = 10000) -> np.ndarray:
+    """
+    Mantel rho in every infant resample (pair-based statistic, Step 7.2 item 1): the pairs are all position pairs
+    p < q of the draw with d_p != d_q, so a duplicated infant is never compared with itself.
+    """
+    p, q = np.triu_indices(S_mat.shape[0], k=1)
+    rhos = []
+    for start in range(0, len(draws), chunk):
+        dp, dq = draws[start:start + chunk, p], draws[start:start + chunk, q]
+        keep = dp != dq
+        rhos.append(spearman_rows(np.where(keep, S_mat[dp, dq], np.nan), np.where(keep, D_mat[dp, dq], np.nan)))
+    return np.concatenate(rhos)
+
+
+def corr_result(rho: float, p: float, boot: np.ndarray) -> dict:
+    """A correlation as rho with its 95% infant bootstrap CI (Step 7.5) and its permutation p."""
+    ci_low, ci_high = bootstrap_ci(boot)
+    return {"rho": float(rho), "ci_95": [float(ci_low), float(ci_high)], "p": float(p)}
 
 
 def pct_rank(values: np.ndarray, x: float) -> float:
@@ -182,15 +223,17 @@ def cross_identification(M: np.ndarray, i: int, j: int) -> dict:
     }
 
 
-def run_developmental_and_twins(n_permutations: int = 200000, seed: int = 42):
+def run_developmental_and_twins(n_permutations: int = N_PERMUTATIONS, seed: int = SEED):
     print("=" * 80)
     print("PHASE 6: DEVELOPMENTAL ANALYSES & TWIN/SIBLING AUDIT (STEP 6)")
-    print(f"Permutations: {n_permutations} | Seed: {seed}")
+    print(f"Permutations and bootstrap resamples: {n_permutations} | Seed: {seed}")
     print("=" * 80)
 
     _ages_yr, ages_days = load_exact_subject_ages()
     n_subs = len(SUBJECT_IDS)
     p_triu, q_triu = np.triu_indices(n_subs, k=1)
+    # The infant resamples of every bootstrap in the pipeline (Step 0 item 8, Step 7.2)
+    draws = bootstrap_draws(n_subs, n_permutations, seed)
 
     # Inter-session interval in days per infant
     intervals_days = np.array([ages_days[s]["ses-2"] - ages_days[s]["ses-1"] for s in SUBJECT_IDS])
@@ -269,42 +312,48 @@ def run_developmental_and_twins(n_permutations: int = 200000, seed: int = 42):
         J1_pairs = np.load(j1_path)
         J2_pairs = np.load(j2_path)
 
-        # 1. Mantel test per session (one seed for all permutation tests, Step 0 item 8)
-        rho_m1, p_m1 = mantel_test(S1, D_mats["ses-1"], n_permutations=n_permutations, seed=seed)
-        rho_m2, p_m2 = mantel_test(S2, D_mats["ses-2"], n_permutations=n_permutations, seed=seed)
+        # 1. Mantel test per session (one seed for all permutation tests, Step 0 item 8), with an infant pair
+        #    bootstrap CI for its rho
+        mantel = {}
+        for ses, S_ses in (("ses-1", S1), ("ses-2", S2)):
+            rho_m, p_m = mantel_test(S_ses, D_mats[ses], n_permutations=n_permutations, seed=seed)
+            mantel[ses] = corr_result(rho_m, p_m, mantel_bootstrap(S_ses, D_mats[ses], draws))
 
-        # 2. Correlation of self-similarity / idiff with inter-session interval and with age at ses-1
+        # 2. Correlation of self-similarity / idiff with inter-session interval and with age at ses-1, each with an
+        #    ordinary infant bootstrap CI (the same infants drawn for both variables)
         self_vals = np.diag(M)
         others_vals = np.zeros(n_subs, dtype=np.float64)
         for a in range(n_subs):
             row_off = [M[a, b] for b in range(n_subs) if b != a]
             col_off = [M[b, a] for b in range(n_subs) if b != a]
-            others_vals[a] = np.mean(row_off + col_off)
-        idiff_vals = (self_vals - others_vals) * 100.0
+            others_vals[a] = np.nanmean(row_off + col_off)
+        idiff_vals = self_vals - others_vals
 
-        rho_self_int, p_self_int = perm_spearman(self_vals, intervals_days, n_permutations=n_permutations, seed=seed)
-        rho_idiff_int, p_idiff_int = perm_spearman(idiff_vals, intervals_days, n_permutations=n_permutations, seed=seed)
-        rho_self_age1, p_self_age1 = perm_spearman(self_vals, ages_ses1_days, n_permutations=n_permutations, seed=seed)
-        rho_idiff_age1, p_idiff_age1 = perm_spearman(idiff_vals, ages_ses1_days, n_permutations=n_permutations, seed=seed)
+        interval_corr = {}
+        for corr_key, x_vals, y_vals in [("self_vs_interval", self_vals, intervals_days),
+                                         ("idiff_vs_interval", idiff_vals, intervals_days),
+                                         ("self_vs_age1", self_vals, ages_ses1_days),
+                                         ("idiff_vs_age1", idiff_vals, ages_ses1_days)]:
+            rho_c, p_c = perm_spearman(x_vals, y_vals, n_permutations=n_permutations, seed=seed)
+            interval_corr[corr_key] = corr_result(rho_c, p_c, spearman_rows(x_vals[draws], y_vals[draws]))
 
         u_shift = u_results[fid]["developmental_shift"]
         dev_results[fid] = {
             "fid": fid, "name": fname,
+            "seed": seed,
+            "n_permutations": n_permutations,
             "delta_U_global": u_shift["delta_U_global"],
             "median_delta": u_shift["median_delta"],
             "ci_95": u_shift["ci_95"],
             "p_value": u_shift["p_value"],
             "mean_abs_dage_days": mean_abs_dage,
             "delta_U_elem": u_shift["delta_U_elem"],
+            "delta_U_elem_q": u_shift["delta_U_elem_q"],
+            "n_sig_delta_U_elem": u_shift["n_sig_delta_U_elem"],
             "delta_u_infant": u_shift["delta_u_infant"],
-            "mantel_ses1": {"rho": rho_m1, "p": p_m1},
-            "mantel_ses2": {"rho": rho_m2, "p": p_m2},
-            "interval_corr": {
-                "self_vs_interval": {"rho": float(rho_self_int), "p": float(p_self_int)},
-                "idiff_vs_interval": {"rho": float(rho_idiff_int), "p": float(p_idiff_int)},
-                "self_vs_age1": {"rho": float(rho_self_age1), "p": float(p_self_age1)},
-                "idiff_vs_age1": {"rho": float(rho_idiff_age1), "p": float(p_idiff_age1)}
-            },
+            "mantel_ses1": mantel["ses-1"],
+            "mantel_ses2": mantel["ses-2"],
+            "interval_corr": interval_corr,
             "individual_infants": {
                 "sub-NORB00064": {
                     "gap_days": float(intervals_days[idx_64]),
@@ -406,7 +455,8 @@ def run_developmental_and_twins(n_permutations: int = 200000, seed: int = 42):
             "same_day_control": SAME_DAY_CONTROL_NOTE
         }
 
-        print(f"[{fid_idx:02d}/26] {fid} ({fname[:25]:<25}) | Mantel s1: rho={rho_m1:+.3f} (p={p_m1:.4f}), s2: rho={rho_m2:+.3f} (p={p_m2:.4f}) | Twin Rank: s1={rank_all_1:4.1f}%, s2={rank_all_2:4.1f}% | Shared P95: {len(shared_elements):<2}/{dim} (individual: {n_shared_individual})")
+        m1, m2 = mantel["ses-1"], mantel["ses-2"]
+        print(f"[{fid_idx:02d}/26] {fid} ({fname[:25]:<25}) | Mantel s1: rho={m1['rho']:+.3f} [{m1['ci_95'][0]:+.3f}, {m1['ci_95'][1]:+.3f}] (p={m1['p']:.4f}), s2: rho={m2['rho']:+.3f} (p={m2['p']:.4f}) | Twin Rank: s1={rank_all_1:4.1f}%, s2={rank_all_2:4.1f}% | Shared P95: {len(shared_elements):<2}/{dim} (individual: {n_shared_individual})")
 
     # BH-FDR of each global test across the 26 feature sets (Step 7.4 ii)
     for test_key in ["mantel_ses1", "mantel_ses2"]:

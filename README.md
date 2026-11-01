@@ -40,12 +40,20 @@ This runs every step from phase 2 onwards and writes the results to `tables/`, `
 It skips phase 1 by default, because phase 1 only rebuilds the input data, which is already saved in `processed_tensors/`. To rebuild everything from the raw recordings, start at phase 1:
 
 ```bash
-.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 200000 --workers 8
+.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 10000 --workers 8
 ```
 
-- `--permutations`: how many random shuffles to use for the significance tests (default 200,000; fewer runs faster). Phases 2–4 also use this number of draws for their bootstrap confidence intervals.
-- `--workers`: how many CPU cores to use (default 8).
-- `--robustness-permutations`: how many random shuffles each robustness check in phase 7 uses (default 10,000).
+- `--permutations`: how many random shuffles to use for the significance tests (default 10,000, as the analysis plan specifies; fewer runs faster). Phases 2, 3, 4 and 6 also use this number of draws for their bootstrap confidence intervals.
+- `--workers`: how many CPU cores to use (default 8). The results do not depend on it.
+- `--robustness-permutations`: how many random shuffles and bootstrap draws each robustness check in phase 7 uses (default 10,000).
+
+Every random step uses the one seed `SEED = 42` in `analysis_pipeline/config.py`, so a rerun with the same settings gives exactly the same numbers. Each results file records the seed.
+
+To check the closeness calculations against values worked out by hand on small example networks (Step 0 of the plan):
+
+```bash
+.venv/bin/python tests/test_edge_closeness.py
+```
 
 You can also run a single step on its own, for example:
 
@@ -109,9 +117,14 @@ HonoursM26/
 │   ├── utils.py                    # Shared helper functions (similarity scores, electrode layout, statistics)
 │   └── 01_…py to 09_…py            # The nine phases (see the table above)
 │
+├── tests/
+│   └── test_edge_closeness.py      # Closeness checked against hand-computed values on toy networks
+│
 ├── tables/                         # Final results tables (CSV, plus Markdown for most)
 │   ├── Table_T1_Global_Summary     # Headline numbers for each of the 26 features
+│   ├── Table_T1b_Interval_Correlations # Self-similarity vs. time between visits and age, and the two short-gap infants
 │   ├── Table_T2_Element_Results    # Results for every single node and connection (3,230 rows)
+│   ├── Table_T2b_Regional_Universality # How similar babies are, region by region
 │   ├── Table_T3_Variance_Partition # Baby vs. session vs. noise breakdown for each node/connection
 │   ├── Table_T4_Robustness         # Main results under each robustness check (one row per check and feature)
 │   ├── Table_T4b_Electrode_Distance # How universality and individuality relate to electrode distance
@@ -130,10 +143,10 @@ HonoursM26/
 │   ├── Figure_7 …                  # Pair-by-pair similarity heatmaps and the twin check
 │   └── *_Supplementary_*           # The same figures for all 26 features (some are multi-page PDFs)
 │
-├── processed_tensors/              # Saved in-between results, so later phases can rerun quickly (374 files)
+├── processed_tensors/              # Saved in-between results, so later phases can rerun quickly (426 files)
 │   ├── README.md                   # What every file contains and its shape
 │   ├── X_*.npy                     # The 26 feature sets (output of phase 1)
-│   ├── J_pair_*, S_mat_*           # Baby-to-baby similarity within a session (phase 2)
+│   ├── J_pair_*, J_region_*, S_mat_*  # Baby-to-baby similarity within a session (phase 2)
 │   ├── W_elem_*, O_elem_*, diff_within_elem_*  # Within-session stability (phase 3)
 │   ├── M_*, M_mat_*, M_elem_*      # Cross-session similarity (phase 4)
 │   ├── metadata.json               # The infant list, electrode order and feature names

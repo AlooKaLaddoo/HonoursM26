@@ -27,6 +27,11 @@ SUBJECT_IDS = [
 SESSIONS = ["ses-1", "ses-2"]
 N_EPOCHS = 12
 
+# One random seed for every bootstrap and permutation step (Step 0 item 8); every results file records it
+SEED = 42
+# Permutations per permutation test and infant resamples per bootstrap (B = 10,000, Steps 7.2 and 7.3)
+N_PERMUTATIONS = 10000
+
 # 19 Electrodes in standard recording order
 CHANNELS = [
     "Fp1", "Fp2", "F3", "F4", "C3", "C4", "P3", "P4", "O1", "O2",

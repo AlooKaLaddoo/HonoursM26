@@ -1,6 +1,8 @@
 """
-Graph centrality computations, signal processing, and Jaccard similarity functions.
+Graph centrality computations, signal processing, Jaccard similarity and infant bootstrap functions.
 """
+import warnings
+
 import mne
 import networkx as nx
 import numpy as np
@@ -344,17 +346,81 @@ def element_J(x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
         out[has_valid] = np.sum(ratio_zero, axis=0)[has_valid] / valid_count[has_valid]
     return out
 
-def recording_S(x1: np.ndarray, x2: np.ndarray) -> float:
+def recording_S(x1: np.ndarray, x2: np.ndarray, zero_rule: bool = False) -> float:
     """
     Computes recording-level weighted Jaccard index across all elements:
     S = mean over pairs of [ sum(min(x1, x2)) / sum(max(x1, x2)) ]
+    An epoch pair whose two vectors are all zero is 0/0: it is left out of the mean, as at element level
+    (NaN if no pair is defined), or counted as 0 with zero_rule (the legacy rule, Step 8 check 1).
     """
     x1 = np.atleast_2d(x1)
     x2 = np.atleast_2d(x2)
     num = np.minimum(x1, x2).sum(axis=1)
     den = np.maximum(x1, x2).sum(axis=1)
-    # If denominator is 0, entire vector is 0
-    ratio = np.zeros_like(num)
     ok = den > 0
-    ratio[ok] = num[ok] / den[ok]
-    return float(np.mean(ratio))
+    if zero_rule:
+        return float(np.sum(num[ok] / den[ok]) / len(den))
+    return float(np.mean(num[ok] / den[ok])) if ok.any() else np.nan
+
+
+def identification_accuracy(M: np.ndarray) -> tuple[float, float]:
+    """
+    1-NN identification accuracy in % (Step 4 item 4): ses-1 -> ses-2 (row maximum) and ses-2 -> ses-1 (column
+    maximum). A tie for the maximum counts as incorrect; an undefined (NaN) cell is never the predicted identity.
+    """
+    M = np.where(np.isnan(M), -np.inf, M)
+    idx = np.arange(M.shape[0])
+    row_max, col_max = M.max(axis=1), M.max(axis=0)
+    fwd = (np.argmax(M, axis=1) == idx) & (np.sum(M == row_max[:, None], axis=1) == 1)
+    bwd = (np.argmax(M, axis=0) == idx) & (np.sum(M == col_max[None, :], axis=0) == 1)
+    return float(np.mean(fwd) * 100.0), float(np.mean(bwd) * 100.0)
+
+# ----------------- Infant Bootstrap (Step 7.2) -----------------
+
+def bootstrap_draws(n: int, B: int, seed: int) -> np.ndarray:
+    """
+    B infant resamples: row i holds the n infant indices d_1 .. d_n drawn with replacement in resample i.
+    Every bootstrap draws them from the one recorded seed, so all statistics share the same resamples and paired
+    differences (Step 7.2 item 4) are always computed within the same resample.
+    """
+    return np.random.default_rng(seed).integers(0, n, (B, n))
+
+
+def bootstrap_counts(draws: np.ndarray, n: int) -> np.ndarray:
+    """
+    How often each infant is drawn in each resample, shape (B, n). A mean over the drawn infants is the mean of the
+    infants' values weighted by c_a (Step 7.2 item 2), and a mean over all position pairs p < q with d_p != d_q is
+    the mean over infant pairs weighted by c_a * c_b (Step 7.2 items 1 and 3).
+    """
+    B = draws.shape[0]
+    return np.bincount((draws + n * np.arange(B)[:, None]).ravel(), minlength=B * n).reshape(B, n).astype(np.float64)
+
+
+def weighted_nanmean(W: np.ndarray, V: np.ndarray) -> np.ndarray:
+    """
+    Weighted mean over the first axis of V for every row of weights W, leaving out NaN entries:
+    W (B, m) with V (m,) or (m, d) gives (B,) or (B, d); NaN where no weighted entry is defined.
+    """
+    valid = ~np.isnan(V)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return (W @ np.where(valid, V, 0.0)) / (W @ valid)
+
+
+def bootstrap_ci(boot: np.ndarray) -> np.ndarray:
+    """95% percentile CI: the 2.5th and 97.5th percentiles over the resamples (axis 0), NaN resamples left out."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)  # a statistic undefined in every resample stays NaN
+        return np.nanpercentile(boot, [2.5, 97.5], axis=0)
+
+
+def bootstrap_p(boot: np.ndarray) -> np.ndarray:
+    """
+    Two-sided bootstrap p (Step 7.2 item 4) per statistic (axis 0 = resamples): 2 x min(fraction <= 0, fraction >= 0)
+    with a floor of 1/B, at most 1. Undefined (NaN) resamples are left out; a statistic never defined gets p = 1.
+    """
+    B = boot.shape[0]
+    valid = ~np.isnan(boot)
+    n_valid = valid.sum(axis=0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        frac = np.minimum((valid & (boot <= 0)).sum(axis=0), (valid & (boot >= 0)).sum(axis=0)) / n_valid
+    return np.where(n_valid > 0, np.clip(2.0 * frac, 1.0 / B, 1.0), 1.0)

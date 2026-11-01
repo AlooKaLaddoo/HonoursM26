@@ -1,21 +1,21 @@
-| Participant ID | Sex | Age ses-1 (yr) | Age ses-2 (yr) | Gap (months) | Gap (days) | Windows ses-1 | Windows ses-2 | Status | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| sub-NORB00064 | Female | 0.4262 | 0.4372 | 0.13 | 4.0 | 13 | 20 | Singleton | Short gap: 4 days |
-| sub-NORB00065 | Male | 0.4344 | 0.7978 | 4.36 | 132.7 | 20 | 20 | Singleton |  |
-| sub-NORB00069 | Female | 0.3852 | 0.5 | 1.38 | 41.9 | 15 | 20 | Singleton |  |
-| sub-NORB00070 | Male | 0.2541 | 0.5055 | 3.02 | 91.8 | 15 | 20 | Singleton |  |
-| sub-NORB00075 | Male | 0.2666 | 0.5055 | 2.87 | 87.3 | 20 | 20 | Singleton |  |
-| sub-NORB00077 | Male | 0.2514 | 0.4917 | 2.88 | 87.8 | 20 | 20 | Singleton |  |
-| sub-NORB00078 | Female | 0.2514 | 0.4767 | 2.7 | 82.3 | 20 | 20 | Singleton |  |
-| sub-NORB00079 | Male | 0.2459 | 0.4716 | 2.71 | 82.4 | 15 | 20 | Singleton |  |
-| sub-NORB00080 | Male | 0.2486 | 0.5583 | 3.72 | 113.1 | 20 | 20 | Singleton |  |
-| sub-NORB00081 | Female | 0.2923 | 0.5716 | 3.35 | 102.0 | 15 | 20 | Singleton |  |
-| sub-NORB00083 | Male | 0.2525 | 0.5442 | 3.5 | 106.5 | 20 | 20 | Singleton |  |
-| sub-NORB00084 | Male | 0.2775 | 0.5555 | 3.34 | 101.5 | 15 | 20 | Singleton |  |
-| sub-NORB00086 | Male | 0.2377 | 0.525 | 3.45 | 104.9 | 20 | 20 | Twin A | Brother of 00087 (male twin) |
-| sub-NORB00087 | Male | 0.2377 | 0.525 | 3.45 | 104.9 | 20 | 20 | Twin B | Brother of 00086 (male twin) |
-| sub-NORB00089 | Male | 0.25 | 0.5466 | 3.56 | 108.3 | 24 | 20 | Singleton |  |
-| sub-NORB00090 | Male | 0.2514 | 0.53 | 3.34 | 101.8 | 15 | 20 | Singleton |  |
-| sub-NORB00094 | Male | 0.2642 | 0.5416 | 3.33 | 101.3 | 12 | 20 | Singleton |  |
-| sub-NORB00096 | Female | 0.2274 | 0.5 | 3.27 | 99.6 | 20 | 20 | Singleton |  |
-| sub-NORB00103 | Male | 0.241 | 0.5233 | 3.39 | 103.1 | 35 | 20 | Singleton |  |
+| Participant ID | Sex | Age ses-1 (days) | Age ses-2 (days) | Interval (days) | Annotated epochs ses-1 | Usable epochs ses-1 | Annotated epochs ses-2 | Usable epochs ses-2 | Epochs used per session | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| sub-NORB00064 | M | 155.7 | 159.7 | 4.0 | 13 | 13 | 20 | 20 | 12 | Singleton | Short inter-session gap (4 days), reported individually in Step 6 |
+| sub-NORB00065 | M | 158.7 | 291.4 | 132.7 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00069 | F | 140.7 | 182.6 | 41.9 | 15 | 15 | 20 | 20 | 12 | Singleton | Short inter-session gap (42 days), reported individually in Step 6 |
+| sub-NORB00070 | M | 92.8 | 184.6 | 91.8 | 15 | 15 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00075 | M | 97.4 | 184.6 | 87.3 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00077 | M | 91.8 | 179.6 | 87.8 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00078 | M | 91.8 | 174.1 | 82.3 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00079 | M | 89.8 | 172.3 | 82.4 | 15 | 14 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00080 | M | 90.8 | 203.9 | 113.1 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00081 | F | 106.8 | 208.8 | 102.0 | 15 | 15 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00083 | F | 92.2 | 198.8 | 106.5 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00084 | F | 101.4 | 202.9 | 101.5 | 15 | 15 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00086 | M | 86.8 | 191.8 | 104.9 | 20 | 20 | 20 | 20 | 12 | Twin A | Twin of sub-NORB00087; flagged in all outputs, excluded in robustness check 4 |
+| sub-NORB00087 | M | 86.8 | 191.8 | 104.9 | 20 | 19 | 20 | 19 | 12 | Twin B | Twin of sub-NORB00086; flagged in all outputs, excluded in robustness check 4 |
+| sub-NORB00089 | M | 91.3 | 199.6 | 108.3 | 24 | 24 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00090 | F | 91.8 | 193.6 | 101.8 | 15 | 15 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00094 | F | 96.5 | 197.8 | 101.3 | 12 | 12 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00096 | M | 83.1 | 182.6 | 99.6 | 20 | 20 | 20 | 20 | 12 | Singleton |  |
+| sub-NORB00103 | F | 88.0 | 191.1 | 103.1 | 35 | 35 | 20 | 20 | 12 | Singleton |  |

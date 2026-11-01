@@ -93,8 +93,8 @@ HEMI_CATEGORIES = {"node": ["L", "R", "M"], "edge": ["L-L", "R-R", "L-R", "L-M",
 TWIN_IDS = ("sub-NORB00086", "sub-NORB00087")
 SHORT_GAP_IDS = ("sub-NORB00064", "sub-NORB00069")
 KEY_FIDS = ["f01", "f04", "f06", "f10", "f13", "f24"]
-IDIFF_LABEL = r"$I_{\mathrm{diff}}$ ($\times 100$)"
-IDIFF_E_LABEL = r"$I_{\mathrm{diff}}(e)$ ($\times 100$)"
+IDIFF_LABEL = r"$I_{\mathrm{diff}}$"
+IDIFF_E_LABEL = r"$I_{\mathrm{diff}}(e)$"
 
 
 def feature_title(fid: str) -> str:
@@ -173,7 +173,7 @@ def matrix_panel(fig, ax, fid, i_res, q_idiff, short_subjs, fontsize):
     for i in range(len(short_subjs)):
         ax.add_patch(patches.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=False, edgecolor="cyan", linewidth=1.2, zorder=5))
     r = i_res[fid]
-    ax.set_title(f"{feature_title(fid)}\n" + IDIFF_LABEL + f" = {r['I_diff']:+.2f} (q = {q_idiff[fid]:.3f}), accuracy = {r['acc_mean']:.1f}%",
+    ax.set_title(f"{feature_title(fid)}\n" + IDIFF_LABEL + f" = {r['I_diff']:+.4f} (q = {q_idiff[fid]:.3f}), accuracy = {r['acc_mean']:.1f}%",
                  fontsize=fontsize, fontweight="bold")
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.ax.tick_params(labelsize=fontsize - 2)
@@ -350,7 +350,7 @@ def scalp_panel(fig, ax, fid, i_res, fontsize=10):
             ax.text(x, y, node, ha="center", va="center", fontsize=fontsize - 3, fontweight="bold", zorder=6)
         for idx in np.argsort(-np.nan_to_num(values, nan=-np.inf))[:3]:
             x, y = ELECTRODE_2D[NODE_LABELS[idx]]
-            ax.annotate(f"{values[idx]:+.2f}", (x, y), xytext=(14, 10 if y >= 0 else -16), textcoords="offset points",
+            ax.annotate(f"{values[idx]:+.3f}", (x, y), xytext=(14, 10 if y >= 0 else -16), textcoords="offset points",
                         fontsize=fontsize - 2, fontweight="bold", arrowprops={"arrowstyle": "->", "color": "#111111", "lw": 1})
         note = "Thick ring: FDR q < 0.05 | labels: three largest values"
     else:
@@ -365,7 +365,7 @@ def scalp_panel(fig, ax, fid, i_res, fontsize=10):
             ax.plot([x1, x2], [y1, y2], color="black", linewidth=6.0, zorder=2, solid_capstyle="round")
             ax.plot([x1, x2], [y1, y2], color=cmap(norm(values[idx])), linewidth=4.0, zorder=3, solid_capstyle="round")
             if len(sig_idx) <= 6:
-                ax.annotate(f"{EDGE_LABELS[idx]}\n{values[idx]:+.2f} (q = {q[idx]:.3f})", ((x1 + x2) / 2, (y1 + y2) / 2),
+                ax.annotate(f"{EDGE_LABELS[idx]}\n{values[idx]:+.3f} (q = {q[idx]:.3f})", ((x1 + x2) / 2, (y1 + y2) / 2),
                             xytext=(15, 12), textcoords="offset points", fontsize=fontsize - 3, fontweight="bold",
                             bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "edgecolor": "#888888", "lw": 1},
                             arrowprops={"arrowstyle": "->", "color": "#555555", "lw": 1})
@@ -444,10 +444,11 @@ def generate_figure_5(dev_res, ages_days):
                      arrowprops={"arrowstyle": "->", "color": color, "lw": 1.2})
     corr = dev_res[fid_target]["interval_corr"]["self_vs_interval"]
     q_text = f", q = {corr['q']:.4f}" if "q" in corr else ""
+    ci_text = f" [{corr['ci_95'][0]:+.3f}, {corr['ci_95'][1]:+.3f}]" if "ci_95" in corr else ""
     ax2.set_xlabel("Inter-session interval (days)", fontsize=10, fontweight="bold")
     ax2.set_ylabel(f"self(a) = M[a, a] ({feature_title(fid_target)})", fontsize=10, fontweight="bold")
     ax2.set_title("B. Self-similarity against the inter-session interval\n"
-                  + rf"Spearman $\rho = {corr['rho']:+.3f}$ (permutation p = {corr['p']:.4f}{q_text})", fontsize=11, fontweight="bold")
+                  + rf"Spearman $\rho = {corr['rho']:+.3f}${ci_text} (permutation p = {corr['p']:.4f}{q_text})", fontsize=11, fontweight="bold")
     ax2.grid(True, linestyle=":", alpha=0.5)
     ax2.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cccccc", fontsize=9.5)
 
