@@ -117,9 +117,6 @@ HonoursM26/
 │   ├── utils.py                    # Shared helper functions (similarity scores, electrode layout, statistics)
 │   └── 01_…py to 09_…py            # The nine phases (see the table above)
 │
-├── tests/
-│   └── test_edge_closeness.py      # Closeness checked against hand-computed values on toy networks
-│
 ├── tables/                         # Final results tables (CSV, plus Markdown for most)
 │   ├── Table_T1_Global_Summary     # Headline numbers for each of the 26 features
 │   ├── Table_T1b_Interval_Correlations # Self-similarity vs. time between visits and age, and the two short-gap infants
