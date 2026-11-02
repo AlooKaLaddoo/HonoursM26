@@ -3020,10 +3020,10 @@
     "name": "alpha_binary_adjacency",
     "dim": 171,
     "counts": {
-      "Universal": 54,
+      "Universal": 55,
       "Individual": 0,
       "Universal and Individual": 1,
-      "Neither": 116
+      "Neither": 115
     },
     "classes": [
       "Universal",
@@ -3136,7 +3136,7 @@
       "Universal",
       "Universal",
       "Neither",
-      "Neither",
+      "Universal",
       "Neither",
       "Neither",
       "Universal",
