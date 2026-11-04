@@ -4,7 +4,7 @@ This folder holds the numbers the pipeline calculates along the way. Each phase 
 
 There are **426 files**: 416 NumPy arrays (`.npy`), 9 JSON files and this README.
 
-Every bootstrap and permutation test uses the one random seed `SEED = 42` in `analysis_pipeline/config.py`, and 10,000 permutations or infant resamples by default (`N_PERMUTATIONS`). Each results file records both (`seed`, `n_permutations`).
+Every bootstrap and permutation test uses the one random seed `SEED = 42` in `analysis_pipeline/config.py`, and 200,000 permutations or infant resamples (`N_PERMUTATIONS`). Each results file records both (`seed`, `n_permutations`).
 
 ---
 

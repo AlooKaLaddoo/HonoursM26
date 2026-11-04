@@ -12,6 +12,8 @@ Generates vector PDFs and 300 DPI PNGs in figures/, following the furtherAnalysi
     hemispheric category shown with midline labelled "M"
   - Sibling figure: per feature and session, the distribution of pair similarities with the sibling pair and the
     matched pairs marked
+  - Threshold bars (not in the plan's list; as in the legacy notebooks): per session, the percentage of element
+    similarities J above 0.30, 0.50, 0.75 and 0.90 per region (nodes) or region pair (edges), stacked by hemisphere
 Every number written on a figure is read from the results; nothing is typed in by hand. Figures shown for a few
 key features have a supplement covering all 26 features (a grid or a multi-page PDF).
 """
@@ -182,7 +184,7 @@ def matrix_panel(fig, ax, fid, i_res, q_idiff, short_subjs, fontsize):
 
 def generate_figure_1(i_res, short_subjs):
     """Figure 1: Cross-session identifiability matrix M per feature, with its own colour scale and colour bar."""
-    print("[1/8] Generating Figure 1: Identifiability Matrices M...")
+    print("[1/9] Generating Figure 1: Identifiability Matrices M...")
     q_idiff = global_q(i_res, "p_idiff", "q_idiff")
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     for ax, fid in zip(axes.flat, KEY_FIDS):
@@ -210,7 +212,7 @@ def generate_figure_1(i_res, short_subjs):
 
 def generate_figure_2(u_res, w_res, i_res):
     """Figure 2: U_1, U_2, W_1, W_2, I_self, I_others per feature, each with its 95% infant bootstrap CI."""
-    print("[2/8] Generating Figure 2: U, W, I_self and I_others with 95% CIs...")
+    print("[2/9] Generating Figure 2: U, W, I_self and I_others with 95% CIs...")
     all_fids = list(FEATURE_DEFS)
     y_pos = np.arange(len(all_fids))[::-1]  # f01 at the top
     series = [
@@ -301,7 +303,7 @@ def add_plane_legends(fig):
 
 def generate_figure_3(u_res, i_res, tax_res):
     """Figure 3: Universality-individuality plane (Step 5a), key features and all 26 features."""
-    print("[3/8] Generating Figure 3: Universality-Individuality Planes...")
+    print("[3/9] Generating Figure 3: Universality-Individuality Planes...")
     fig, axes = plt.subplots(2, 2, figsize=(16, 14))
     for ax, fid in zip(axes.flat, ["f01", "f06", "f10", "f24"]):
         plane_panel(ax, fid, u_res, i_res, tax_res)
@@ -377,7 +379,7 @@ def scalp_panel(fig, ax, fid, i_res, fontsize=10):
 
 def generate_figure_4(i_res):
     """Figure 4: Scalp maps of I_diff(e), key features and all 26 features."""
-    print("[4/8] Generating Figure 4: Scalp Maps of I_diff(e)...")
+    print("[4/9] Generating Figure 4: Scalp Maps of I_diff(e)...")
     fig, axes = plt.subplots(2, 2, figsize=(14, 15))
     for ax, fid in zip(axes.flat, ["f06", "f04", "f20", "f12"]):
         scalp_panel(fig, ax, fid, i_res)
@@ -404,7 +406,7 @@ def generate_figure_4(i_res):
 
 def generate_figure_5(dev_res, ages_days):
     """Figure 5: Delta U per feature with CI, and self(a) against the inter-session interval."""
-    print("[5/8] Generating Figure 5: Delta U and Self-Similarity vs Interval...")
+    print("[5/9] Generating Figure 5: Delta U and Self-Similarity vs Interval...")
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
 
     all_fids = list(FEATURE_DEFS)
@@ -499,7 +501,7 @@ def region_breakdown(fid, var_res):
 
 def generate_figure_6(var_res):
     """Figure 6: Variance partition stacked bars per feature, averaged over elements and by region (Step 5b)."""
-    print("[6/8] Generating Figure 6: Variance Partition Stacked Bars...")
+    print("[6/9] Generating Figure 6: Variance Partition Stacked Bars...")
     valid_fids = [f for f in FEATURE_DEFS if not var_res[f]["elements"][0]["skipped"]]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10))
@@ -605,7 +607,7 @@ def heatmap_figure(fid, ages_days):
 
 def generate_figure_7(ages_days):
     """Figure 7: Element heatmaps sorted by |Delta age|; f01 as the main figure, all 26 features in a multi-page PDF."""
-    print("[7/8] Generating Figure 7: Element Heatmaps Sorted by |Delta age|...")
+    print("[7/9] Generating Figure 7: Element Heatmaps Sorted by |Delta age|...")
     save_figure(heatmap_figure("f01", ages_days), "Figure_7_Ordered_Element_Heatmaps")
     with PdfPages(FIGURES_DIR / "Figure_7_Supplementary_All_26_Heatmaps.pdf") as pdf:
         for fid in FEATURE_DEFS:
@@ -654,7 +656,7 @@ def sibling_figure(fid, twin_res, ages_days):
 
 def generate_sibling_figure(twin_res, ages_days):
     """Sibling figure (Step 6): f01 as the main figure, all 26 features in a multi-page PDF."""
-    print("[8/8] Generating the Sibling Figure: Pair Similarity Distributions...")
+    print("[8/9] Generating the Sibling Figure: Pair Similarity Distributions...")
     save_figure(sibling_figure("f01", twin_res, ages_days), "Figure_7_Supplementary_Twin_Distributions")
     with PdfPages(FIGURES_DIR / "Figure_7_Supplementary_Twin_Distributions_All_26.pdf") as pdf:
         for fid in FEATURE_DEFS:
@@ -663,10 +665,97 @@ def generate_sibling_figure(twin_res, ages_days):
             plt.close(fig)
 
 
+# ----------------------------------------------------------------------------------------------
+# Threshold bars: share of element similarities J above a threshold, by region and hemisphere
+# ----------------------------------------------------------------------------------------------
+
+THRESHOLD_PAIRS = ((0.75, 0.90), (0.50, 0.30))  # (left bar, right bar) per row, as in the legacy notebooks
+
+
+def threshold_percentages(J, groups, order, hemi, categories, threshold):
+    """
+    Per group: percentage of the group's defined J values (all infant pairs x its elements) above the threshold,
+    split by hemispheric category, so the stacked segments add up to the group's total. 0/0 (NaN) values are left out.
+    """
+    pct = np.full((len(order), len(categories)), np.nan)
+    for gi, g in enumerate(order):
+        in_g = groups == g
+        n_defined = np.sum(~np.isnan(J[:, in_g]))
+        if n_defined:
+            for ci, c in enumerate(categories):
+                pct[gi, ci] = 100.0 * np.sum(J[:, in_g & (hemi == c)] > threshold) / n_defined
+    return pct
+
+
+def threshold_panel(ax, fid, J, thresholds, fontsize=9):
+    """Grouped stacked bars: one pair of bars per region (nodes) or region pair (edges), stacked by hemispheric category."""
+    ftype = FEATURE_DEFS[fid]["type"]
+    _labels, groups, _within, order = element_info(fid)
+    categories = HEMI_CATEGORIES[ftype]
+    hemi = np.array(hemi_category(fid))
+    x = np.arange(len(order))
+    width = 0.38
+    for offset, threshold in zip((-width / 2, width / 2), thresholds):
+        pct = threshold_percentages(J, groups, order, hemi, categories, threshold)
+        bottom = np.zeros(len(order))
+        for ci in range(len(categories)):
+            vals = np.nan_to_num(pct[:, ci])
+            bars = ax.bar(x + offset, vals, width, bottom=bottom, color=plt.get_cmap("Set2")(ci), edgecolor="white", linewidth=0.5)
+            ax.bar_label(bars, labels=[f"{v:.1f}" if v > 2 else "" for v in vals], label_type="center", fontsize=fontsize - 3)
+            bottom += vals
+        for xi, total in zip(x + offset, bottom):
+            ax.text(xi, total + 0.8, f"{total:.1f}", ha="center", va="bottom", fontsize=fontsize - 3, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{g}\n(n = {np.sum(groups == g)})" for g in order], fontsize=fontsize - 1)
+    ax.set_ylim(0, 105)
+    ax.set_yticks(range(0, 101, 20))
+    ax.set_ylabel("Percentage of defined J values (%)", fontsize=fontsize, fontweight="bold")
+    ax.set_xlabel("Region" if ftype == "node" else "Region pair", fontsize=fontsize, fontweight="bold")
+    ax.grid(axis="y", linestyle=":", alpha=0.5)
+
+
+def threshold_figure(fid):
+    """
+    For each session, the percentage of the element similarities J (every infant pair x element of a region or region
+    pair) above 0.75 and 0.90 (top) and above 0.50 and 0.30 (bottom), stacked by hemispheric category.
+    """
+    categories = HEMI_CATEGORIES[FEATURE_DEFS[fid]["type"]]
+    fig, axes = plt.subplots(2, 2, figsize=(28, 14), sharey=True)
+    for col, ses in enumerate(SESSIONS):
+        J = np.load(OUTPUT_TENSORS_DIR / f"J_pair_{fid}_{ses}.npy")
+        n_undefined = int(np.isnan(J).sum())
+        undefined_text = f"; {n_undefined} of {J.size} values 0/0, left out" if n_undefined else ""
+        for row, thresholds in enumerate(THRESHOLD_PAIRS):
+            ax = axes[row, col]
+            threshold_panel(ax, fid, J, thresholds)
+            ax.set_title(f"{ses}: J > {thresholds[0]:.2f} (left bar) and J > {thresholds[1]:.2f} (right bar){undefined_text}",
+                         fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=(0, 0.05, 1, 0.94))
+    fig.legend(handles=[patches.Patch(color=plt.get_cmap("Set2")(i), label=c) for i, c in enumerate(categories)],
+               loc="lower center", bbox_to_anchor=(0.5, 0.0), ncol=len(categories), fontsize=10,
+               title="Hemispheric category (L left, R right, M midline); segments add up to the bar total written on top")
+    fig.suptitle(f"Figure 7 (Supplementary): Share of Element Similarities J Above a Threshold, {feature_title(fid)}\n"
+                 f"Each bar: all {len(SUBJECT_IDS) * (len(SUBJECT_IDS) - 1) // 2} infant pairs x the elements of that "
+                 f"{'region' if FEATURE_DEFS[fid]['type'] == 'node' else 'region pair'} (n elements below each label)",
+                 fontsize=14, fontweight="bold", y=0.99)
+    return fig
+
+
+def generate_threshold_figure():
+    """Threshold bars (as in the legacy notebooks): f01 as the main figure, all 26 features in a multi-page PDF."""
+    print("[9/9] Generating the Threshold Bars: Share of J Above 0.30, 0.50, 0.75 and 0.90...")
+    save_figure(threshold_figure("f01"), "Figure_7_Supplementary_Threshold_Bars")
+    with PdfPages(FIGURES_DIR / "Figure_7_Supplementary_Threshold_Bars_All_26.pdf") as pdf:
+        for fid in FEATURE_DEFS:
+            fig = threshold_figure(fid)
+            pdf.savefig(fig, bbox_inches="tight")
+            plt.close(fig)
+
+
 def generate_all_figures():
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     print("=" * 80)
-    print("PHASE 9: COMPILING & GENERATING PUBLICATION FIGURES (1 THROUGH 7 AND THE SIBLING FIGURE)")
+    print("PHASE 9: COMPILING & GENERATING PUBLICATION FIGURES (1 THROUGH 7, THE SIBLING FIGURE AND THE THRESHOLD BARS)")
     print("=" * 80)
 
     # Load prerequisite result databases
@@ -698,6 +787,7 @@ def generate_all_figures():
     generate_figure_6(var_res)
     generate_figure_7(ages_days)
     generate_sibling_figure(twin_res, ages_days)
+    generate_threshold_figure()
 
     print("=" * 80)
     print("ALL PUBLICATION FIGURES SUCCESSFULLY GENERATED!")

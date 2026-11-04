@@ -7,7 +7,7 @@ Step 3 item 5, for the odd/even split (odd k vs even k, paired k with k+1):
   - Matched others baseline O_s(a) and O_s(a, e)
   - Within-session identifiability W_s - O_s at recording and element level, tested against 0 with the infant
     bootstrap (two-sided, Step 7.2 item 4); element p-values are FDR-corrected across elements
-  - Infant-level bootstrap 95% Confidence Intervals (10,000 resamples by default, one recorded seed)
+  - Infant-level bootstrap 95% Confidence Intervals (200,000 resamples by default, one recorded seed)
 """
 import json
 import sys

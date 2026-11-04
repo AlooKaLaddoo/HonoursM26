@@ -1,7 +1,7 @@
 """
 Phase 6: Developmental Trajectories, Mantel Tests, & Sibling/Twin Analysis (Step 6)
 Computes:
-  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (10,000 permutations by default)
+  - Mantel matrix correlation tests between pairwise similarity S and age gap |Delta age| (200,000 permutations by default)
   - Correlation between self-similarity M[a, a] / idiff(a) and inter-session time gap and age at ses-1 (in days)
   - A 95% infant bootstrap CI for every correlation (Step 7.5): pair bootstrap for the Mantel rho, ordinary
     bootstrap of the 19 infants for the interval and age correlations
@@ -36,6 +36,7 @@ if __package__ is None or __package__ == "":
         EDGE_LABELS,
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         OUTPUT_TENSORS_DIR,
         SEED,
@@ -49,6 +50,7 @@ else:
         EDGE_LABELS,
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         OUTPUT_TENSORS_DIR,
         SEED,
@@ -111,7 +113,7 @@ def mantel_test(S_mat: np.ndarray, D_mat: np.ndarray, n_permutations: int = N_PE
         ry_perm_std = (ry_perm - np.mean(ry_perm)) / np.std(ry_perm)
         null_rhos[i] = np.dot(rx_std, ry_perm_std)
 
-    p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho))) / (1.0 + n_permutations))
+    p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho) - PERM_TIE_TOL)) / (1.0 + n_permutations))
     return obs_rho, p_two_sided
 
 
@@ -132,7 +134,7 @@ def perm_spearman(x: np.ndarray, y: np.ndarray, n_permutations: int = N_PERMUTAT
         perm_ry = rng.permutation(ry_std)
         null_rhos[i] = np.dot(rx_std, perm_ry)
 
-    p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho))) / (1.0 + n_permutations))
+    p_two_sided = float((1.0 + np.sum(np.abs(null_rhos) >= np.abs(obs_rho) - PERM_TIE_TOL)) / (1.0 + n_permutations))
     return obs_rho, p_two_sided
 
 

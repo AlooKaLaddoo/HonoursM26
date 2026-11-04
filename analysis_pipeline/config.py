@@ -29,8 +29,12 @@ N_EPOCHS = 12
 
 # One random seed for every bootstrap and permutation step (Step 0 item 8); every results file records it
 SEED = 42
-# Permutations per permutation test and infant resamples per bootstrap (B = 10,000, Steps 7.2 and 7.3)
-N_PERMUTATIONS = 10000
+# Permutations per permutation test and infant resamples per bootstrap (B = 200,000, the value used for the reported results)
+N_PERMUTATIONS = 200000
+# A null statistic counts as at least as extreme as the observed one when it is within this distance of it. The observed
+# and null statistics are not always summed in the same floating-point order, so an exact tie (e.g. I_diff(e) = 0 for a
+# link kept in almost every binary network) could otherwise miss by ~1e-16 and get the smallest possible p-value.
+PERM_TIE_TOL = 1e-12
 
 # 19 Electrodes in standard recording order
 CHANNELS = [

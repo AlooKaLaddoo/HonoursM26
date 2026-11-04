@@ -7,7 +7,7 @@ Computes:
   - Per-infant universality u_s(a) and Delta u(a)
   - Regional universality U_s(g) (5 node regions, 15 edge region pairs) as the column means of the
     pairs x regions matrix of J (Step 2 item 4)
-  - Element-shuffle null hypothesis permutation tests (10,000 permutations per feature/session by default)
+  - Element-shuffle null hypothesis permutation tests (200,000 permutations per feature/session by default)
   - Infant-level bootstrap 95% Confidence Intervals for U_s, U_s(g), Delta U and Delta U(e) (as many resamples as
     permutations); one recorded seed, so every statistic uses the same infant resamples
   - Benjamini-Hochberg FDR correction across elements (q < 0.05) for U_s(e) and for Delta U(e)
@@ -34,6 +34,7 @@ if __package__ is None or __package__ == "":
         EDGE_LABELS,
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
@@ -54,6 +55,7 @@ else:
         EDGE_LABELS,
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
@@ -140,10 +142,10 @@ def _run_perm_worker(seed_seq: np.random.SeedSequence, n_perms: int, A_stacked: 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)  # pairs that are 0/0 in all 12 epochs
             null_U_e = np.nanmean(np.nanmean(j_elem, axis=1), axis=0)
-            null_elem_ge += (null_U_e >= obs_U_elem).astype(np.int64)
+            null_elem_ge += (null_U_e >= obs_U_elem - PERM_TIE_TOL).astype(np.int64)
 
             # Recording Jaccard: sum over elements
-            null_global_ge += int(np.nanmean(pair_recording_S(min_v, max_v)) >= obs_U_global)
+            null_global_ge += int(np.nanmean(pair_recording_S(min_v, max_v)) >= obs_U_global - PERM_TIE_TOL)
 
     return null_elem_ge, null_global_ge
 

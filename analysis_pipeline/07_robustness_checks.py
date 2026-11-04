@@ -14,7 +14,7 @@ change at a time (furtherAnalysis Step 8); everything else is kept as in the mai
      (all binary features)
   9. Electrode distance: Spearman rho of U(e) and of I_diff(e) with inter-electrode distance, and the within- vs
      between-region comparison of U(e) repeated on its residuals after linear regression on distance (edge features)
-The element-level tests behind the class counts use n_permutations (default 10,000, as in Step 7.3). The baseline is
+The element-level tests behind the class counts use n_permutations (default 200,000, as in the main analysis). The baseline is
 recomputed with the same code and permutations, so class counts are compared like with like; its recording-level
 values are checked against Phases 2 and 4.
 Outputs Table T4 (checks 1-8), Table T4b (check 9) and robustness_results.json.
@@ -45,6 +45,7 @@ if __package__ is None or __package__ == "":
         FREQUENCY_BANDS,
         N_EPOCHS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
@@ -77,6 +78,7 @@ else:
         FREQUENCY_BANDS,
         N_EPOCHS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         NODE_LABELS,
         NODE_REGIONS,
         OUTPUT_TENSORS_DIR,
@@ -169,7 +171,7 @@ def element_shuffle_p(G: np.ndarray, obs: np.ndarray, n_permutations: int, rng, 
         c = min(chunk, n_permutations - done)
         perms = rng.permuted(np.tile(np.arange(dim), (c, n_pairs, 1)), axis=2)  # one permutation per pair
         null_U = nan_mean(G[pair_idx, elem_idx, perms], axis=1)  # (c, dim)
-        count_ge += np.sum(null_U >= obs, axis=0)
+        count_ge += np.sum(null_U >= obs - PERM_TIE_TOL, axis=0)
         done += c
     p = (1.0 + count_ge) / (1.0 + n_permutations)
     p[np.isnan(obs)] = 1.0
@@ -189,7 +191,7 @@ def identifiability_elem_p(M_elem: np.ndarray, obs_diff: np.ndarray, n_permutati
         diag_sum, diag_count = filled[rows, perm].sum(axis=0), valid[rows, perm].sum(axis=0)
         with np.errstate(divide="ignore", invalid="ignore"):
             null_diff = diag_sum / diag_count - (total_sum - diag_sum) / (total_count - diag_count)
-        count_ge += null_diff >= obs_diff
+        count_ge += null_diff >= obs_diff - PERM_TIE_TOL  # tolerance: observed and null are summed in a different order
     p = (1.0 + count_ge) / (1.0 + n_permutations)
     p[np.isnan(obs_diff)] = 1.0  # no observed I_diff(e): 0/0 in every comparison
     return p

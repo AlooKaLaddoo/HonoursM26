@@ -40,12 +40,12 @@ This runs every step from phase 2 onwards and writes the results to `tables/`, `
 It skips phase 1 by default, because phase 1 only rebuilds the input data, which is already saved in `processed_tensors/`. To rebuild everything from the raw recordings, start at phase 1:
 
 ```bash
-.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 10000 --workers 8
+.venv/bin/python run_full_analysis.py --start-phase 1 --permutations 200000 --workers 8
 ```
 
-- `--permutations`: how many random shuffles to use for the significance tests (default 10,000, as the analysis plan specifies; fewer runs faster). Phases 2, 3, 4 and 6 also use this number of draws for their bootstrap confidence intervals.
+- `--permutations`: how many random shuffles to use for the significance tests (default 200,000, the value used for the reported results; fewer runs faster). Phases 2, 3, 4 and 6 also use this number of draws for their bootstrap confidence intervals.
 - `--workers`: how many CPU cores to use (default 8). The results do not depend on it.
-- `--robustness-permutations`: how many random shuffles and bootstrap draws each robustness check in phase 7 uses (default 10,000).
+- `--robustness-permutations`: how many random shuffles and bootstrap draws each robustness check in phase 7 uses (default 200,000).
 
 Every random step uses the one seed `SEED = 42` in `analysis_pipeline/config.py`, so a rerun with the same settings gives exactly the same numbers. Each results file records the seed.
 
@@ -97,7 +97,7 @@ All babies change in similar ways between 3 and 6 months. Subtracting D removes 
 | 6 | `06_developmental_and_twins.py` | Checks how results relate to age and to the time between sessions, and looks at the one twin pair in the group. |
 | 7 | `07_robustness_checks.py` | Repeats the key results with 9 different method choices, one at a time, to make sure they hold up. |
 | 8 | `08_export_tables.py` | Writes the final tables T1–T6. |
-| 9 | `09_generate_figures.py` | Draws the final Figures 1–7 and the twin figure, plus supplements that cover all 26 features. |
+| 9 | `09_generate_figures.py` | Draws the final Figures 1–7, the twin figure and the threshold bar charts, plus supplements that cover all 26 features. |
 
 ---
 
@@ -137,7 +137,7 @@ HonoursM26/
 │   ├── Figure_4 …                  # Head maps showing which brain areas are most personal
 │   ├── Figure_5 …                  # Changes with age and with time between sessions
 │   ├── Figure_6 …                  # Baby vs. session vs. noise breakdown
-│   ├── Figure_7 …                  # Pair-by-pair similarity heatmaps and the twin check
+│   ├── Figure_7 …                  # Pair-by-pair similarity heatmaps, the twin check, and how often similarity passes 0.3 / 0.5 / 0.75 / 0.9 per brain region
 │   └── *_Supplementary_*           # The same figures for all 26 features (some are multi-page PDFs)
 │
 ├── processed_tensors/              # Saved in-between results, so later phases can rerun quickly (426 files)

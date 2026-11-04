@@ -6,7 +6,7 @@ Computes:
   - I_self, I_others, and Differential Identifiability I_diff = I_self - I_others (Jaccard units)
   - 1-Nearest Neighbor Identification Accuracy (ses-1 -> ses-2, ses-2 -> ses-1, and Mean)
   - Element-level M_e, I_self(e), I_others(e), and I_diff(e)
-  - Permutation tests (10,000 column permutations by default) for global I_diff, each accuracy, the mean accuracy,
+  - Permutation tests (200,000 column permutations by default) for global I_diff, each accuracy, the mean accuracy,
     and element I_diff(e)
   - Benjamini-Hochberg FDR correction across elements, and across the 26 features for each global test (q < 0.05)
   - Infant bootstrap 95% Confidence Intervals (as many resamples as permutations, one recorded seed)
@@ -27,6 +27,7 @@ if __package__ is None or __package__ == "":
     from analysis_pipeline.config import (
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         OUTPUT_TENSORS_DIR,
         SEED,
         SUBJECT_IDS,
@@ -44,6 +45,7 @@ else:
     from .config import (
         FEATURE_DEFS,
         N_PERMUTATIONS,
+        PERM_TIE_TOL,
         OUTPUT_TENSORS_DIR,
         SEED,
         SUBJECT_IDS,
@@ -189,13 +191,15 @@ def run_identifiability(n_permutations: int = N_PERMUTATIONS, seed: int = SEED):
                 off_count = total_elem_count - diag_count
                 o_elem_null = np.where(off_count > 0, off_sum / off_count, np.nan)
             diff_elem_null = s_elem_null - o_elem_null
-            null_elem_ge += (diff_elem_null >= I_diff_elem).astype(np.int32)
+            # The observed I_diff(e) (np.nanmean, above) and the null (sums and counts) are computed in a different
+            # floating-point order; the tolerance stops an exact tie from missing by rounding error
+            null_elem_ge += (diff_elem_null >= I_diff_elem - PERM_TIE_TOL).astype(np.int32)
 
         null_acc_mean = (null_acc_f + null_acc_b) / 2.0
-        p_idiff = float((1.0 + np.sum(null_idiff >= I_diff)) / (1.0 + n_permutations))
-        p_acc_f = float((1.0 + np.sum(null_acc_f >= acc_forward)) / (1.0 + n_permutations))
-        p_acc_b = float((1.0 + np.sum(null_acc_b >= acc_backward)) / (1.0 + n_permutations))
-        p_acc_m = float((1.0 + np.sum(null_acc_mean >= acc_mean)) / (1.0 + n_permutations))
+        p_idiff = float((1.0 + np.sum(null_idiff >= I_diff - PERM_TIE_TOL)) / (1.0 + n_permutations))
+        p_acc_f = float((1.0 + np.sum(null_acc_f >= acc_forward - PERM_TIE_TOL)) / (1.0 + n_permutations))
+        p_acc_b = float((1.0 + np.sum(null_acc_b >= acc_backward - PERM_TIE_TOL)) / (1.0 + n_permutations))
+        p_acc_m = float((1.0 + np.sum(null_acc_mean >= acc_mean - PERM_TIE_TOL)) / (1.0 + n_permutations))
         p_elem = (1.0 + null_elem_ge) / (1.0 + n_permutations)
         # Elements that are 0/0 in every comparison have no observed I_diff(e); no null value is >= NaN,
         # so without this they would get the smallest possible p-value

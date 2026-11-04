@@ -1,0 +1,78 @@
+// Analysis pipeline flowchart (analysis_pipeline/01-09).
+// Render:  dot -Tsvg pipeline_flowchart.dot -o pipeline_flowchart.svg
+//          dot -Tpng -Gdpi=300 pipeline_flowchart.dot -o pipeline_flowchart.png
+digraph pipeline {
+  graph [rankdir=LR, compound=true, nodesep=0.35, ranksep=0.55, pad=0.3,
+         fontname="Noto Sans", bgcolor="white"];
+  node  [shape=box, style="rounded,filled", fontname="Noto Sans", fontsize=11,
+         penwidth=1.4, margin="0.18,0.10"];
+  edge  [color="#555555", penwidth=1.4, arrowsize=0.8];
+
+  // ---- Input ----
+  data [fillcolor="#EEEEEE", color="#777777", label=<
+    <B>EEG data</B><BR/>
+    <FONT POINT-SIZE="10">N = 19 infants<BR/>2 sessions × 12 epochs<BR/>raw EDF + |r| matrices<BR/>+ BIDS metadata</FONT>>];
+
+  // ---- Phase 1 ----
+  p1 [fillcolor="#DCEAF7", color="#2F6EAD", label=<
+    <B>1 · Feature extraction</B><BR/>
+    <FONT POINT-SIZE="10">26 feature sets<BR/>(18 broadband + 8 band)<BR/>tensor X: 19 × 2 × 12 × n</FONT>>];
+
+  // ---- Phases 2-4: core comparisons ----
+  subgraph cluster_core {
+    label=<<B>Core comparisons</B>>; fontsize=12; fontcolor="#1F7A6D";
+    style="rounded,dashed"; color="#1F7A6D"; penwidth=1.2; margin=12;
+    node [fillcolor="#DDF1EC", color="#1F7A6D"];
+    p4 [label=<<B>4 · Identifiability</B> <FONT POINT-SIZE="9">(C, D)</FONT><BR/>
+      <FONT POINT-SIZE="10">cross-session M (19 × 19)<BR/>I<SUB>diff</SUB>, 1-NN accuracy</FONT>>];
+    p3 [label=<<B>3 · Within-session</B> <FONT POINT-SIZE="9">(B)</FONT><BR/>
+      <FONT POINT-SIZE="10">self W vs others O<BR/>epochs 1–6 vs 7–12</FONT>>];
+    p2 [label=<<B>2 · Universality</B> <FONT POINT-SIZE="9">(A)</FONT><BR/>
+      <FONT POINT-SIZE="10">U₁, U₂, ΔU<BR/>element · region · recording</FONT>>];
+    { rank=same; p4 -> p3 -> p2 [style=invis]; }  // phase order, top to bottom
+  }
+
+  // ---- Phases 5-7: integration ----
+  subgraph cluster_int {
+    label=<<B>Integration &amp; checks</B>>; fontsize=12; fontcolor="#6A3D9A";
+    style="rounded,dashed"; color="#6A3D9A"; penwidth=1.2; margin=12;
+    node [fillcolor="#ECE3F5", color="#6A3D9A"];
+    p7 [label=<<B>7 · Robustness</B><BR/>
+      <FONT POINT-SIZE="10">9 sensitivity checks<BR/>(0/0 rule, K = 6, reference, wPLI …)</FONT>>];
+    p6 [label=<<B>6 · Development &amp; twins</B><BR/>
+      <FONT POINT-SIZE="10">Mantel tests vs age gap<BR/>sibling pair 86 / 87</FONT>>];
+    p5 [label=<<B>5 · Taxonomy &amp; variance</B><BR/>
+      <FONT POINT-SIZE="10">4-quadrant element classes<BR/>LMM: infant / session / epoch</FONT>>];
+    { rank=same; p7 -> p6 -> p5 [style=invis]; }  // phase order, top to bottom
+  }
+
+  // ---- Phases 8-9: reporting ----
+  subgraph cluster_out {
+    label=<<B>Reporting</B>>; fontsize=12; fontcolor="#B35C00";
+    style="rounded,dashed"; color="#B35C00"; penwidth=1.2; margin=12;
+    node [fillcolor="#FBE8D3", color="#B35C00"];
+    p9 [label=<<B>9 · Figures</B><BR/><FONT POINT-SIZE="10">Figs 1 – 7 + sibling</FONT>>];
+    p8 [label=<<B>8 · Tables</B><BR/><FONT POINT-SIZE="10">T1 – T6</FONT>>];
+    { rank=same; p9 -> p8 [style=invis]; }  // phase order, top to bottom
+  }
+
+  // ---- Shared statistics footnote ----
+  stats [shape=note, style="filled", fillcolor="#FFFDF2", color="#999999", fontsize=10, label=<
+    <B>Statistics used throughout</B><BR/>
+    200,000 permutations · infant bootstrap 95% CI<BR/>BH-FDR q &lt; 0.05 · single seed (42)>];
+
+  // ---- Flow ----
+  data -> p1;
+  p1 -> p2;
+  p1 -> p3;
+  p1 -> p4;
+  p2 -> p5 [lhead=cluster_int];
+  p4 -> p7 [lhead=cluster_int];
+  p5 -> p6 [constraint=false];
+  p3 -> p9 [ltail=cluster_core, lhead=cluster_out, style=dashed, color="#999999"];
+  p6 -> p8 [ltail=cluster_int, lhead=cluster_out];
+
+  // keep the footnote under the input column
+  { rank=same; data; stats; }
+  data -> stats [style=invis];
+}

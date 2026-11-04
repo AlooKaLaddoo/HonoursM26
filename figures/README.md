@@ -31,5 +31,7 @@ $I_{\text{diff}} = I_{\text{self}} - I_{\text{others}}$ is shown in Jaccard unit
 | `Figure_6_Supplementary_Regions_All_Features` (.pdf, .png) | Figure 6B for every modelled feature: by region (node features) or region pair (edge features). |
 | `Figure_7_Supplementary_All_26_Heatmaps.pdf` | Figure 7 for every feature, one feature per page (26 pages). |
 | `Figure_7_Supplementary_Twin_Distributions_All_26.pdf` | The sibling figure for every feature, one feature per page (26 pages). |
+| `Figure_7_Supplementary_Threshold_Bars` (.pdf, .png) | Threshold bars for f01, the region summary of the legacy notebooks (not in the plan's list). For each session, the percentage of the element similarities $J(e)$ (all 171 infant pairs × the elements of a region pair) above 0.75 and 0.90 (top row, left and right bar) and above 0.50 and 0.30 (bottom row). Each bar is stacked by hemispheric category (L-L, R-R, L-R, L-M, R-M, M-M; L, R, M for node features), with the bar total written on top and the number of elements under each label. Undefined (0/0) values are left out, and the panel title says how many there are. |
+| `Figure_7_Supplementary_Threshold_Bars_All_26.pdf` | The threshold bars for every feature, one feature per page (26 pages). Node features are grouped by region. |
 
 All figures use Matplotlib with embedded TrueType fonts (Type 42) and the `DejaVu Sans` typeface.
