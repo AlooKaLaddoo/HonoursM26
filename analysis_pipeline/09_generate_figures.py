@@ -687,28 +687,37 @@ def threshold_percentages(J, groups, order, hemi, categories, threshold):
     return pct
 
 
-def threshold_panel(ax, fid, J, thresholds, fontsize=9):
-    """Grouped stacked bars: one pair of bars per region (nodes) or region pair (edges), stacked by hemispheric category."""
+def threshold_panel(ax, fid, J, thresholds, fontsize=9, label_min=2.0, vertical=False):
+    """
+    Grouped stacked bars: one pair of bars per region (nodes) or region pair (edges), stacked by hemispheric category.
+    Segments above label_min (%) are labelled. vertical=True writes the numbers and group labels rotated, for narrow bars.
+    """
     ftype = FEATURE_DEFS[fid]["type"]
     _labels, groups, _within, order = element_info(fid)
     categories = HEMI_CATEGORIES[ftype]
     hemi = np.array(hemi_category(fid))
     x = np.arange(len(order))
     width = 0.38
+    rotation = 90 if vertical else 0
     for offset, threshold in zip((-width / 2, width / 2), thresholds):
         pct = threshold_percentages(J, groups, order, hemi, categories, threshold)
         bottom = np.zeros(len(order))
         for ci in range(len(categories)):
             vals = np.nan_to_num(pct[:, ci])
             bars = ax.bar(x + offset, vals, width, bottom=bottom, color=plt.get_cmap("Set2")(ci), edgecolor="white", linewidth=0.5)
-            ax.bar_label(bars, labels=[f"{v:.1f}" if v > 2 else "" for v in vals], label_type="center", fontsize=fontsize - 3)
+            ax.bar_label(bars, labels=[f"{v:.1f}" if v > label_min else "" for v in vals], label_type="center",
+                         fontsize=fontsize - 3, rotation=rotation)
             bottom += vals
         for xi, total in zip(x + offset, bottom):
-            ax.text(xi, total + 0.8, f"{total:.1f}", ha="center", va="bottom", fontsize=fontsize - 3, fontweight="bold")
+            ax.text(xi, total + 0.8, f"{total:.1f}", ha="center", va="bottom", fontsize=fontsize - 3, fontweight="bold", rotation=rotation)
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{g}\n(n = {np.sum(groups == g)})" for g in order], fontsize=fontsize - 1)
-    ax.set_ylim(0, 105)
+    if vertical:
+        ax.set_xticklabels([f"{g} (n = {np.sum(groups == g)})" for g in order], fontsize=fontsize - 1, rotation=90)
+    else:
+        ax.set_xticklabels([f"{g}\n(n = {np.sum(groups == g)})" for g in order], fontsize=fontsize - 1)
+    ax.set_ylim(0, 124 if vertical else 105)  # room for the rotated totals above a full bar
     ax.set_yticks(range(0, 101, 20))
+    ax.tick_params(axis="y", labelsize=fontsize)
     ax.set_ylabel("Percentage of defined J values (%)", fontsize=fontsize, fontweight="bold")
     ax.set_xlabel("Region" if ftype == "node" else "Region pair", fontsize=fontsize, fontweight="bold")
     ax.grid(axis="y", linestyle=":", alpha=0.5)
@@ -741,8 +750,53 @@ def threshold_figure(fid):
     return fig
 
 
+WEIGHTED_NODE_FIDS = [f for f, d in FEATURE_DEFS.items() if d["network"] == "weighted" and d["type"] == "node"]
+# The same four measures computed on edges (f03, f05, f07, f09): "..._node_<measure>" -> "..._edge_<measure>"
+WEIGHTED_EDGE_FIDS = [f for f, d in FEATURE_DEFS.items()
+                      if d["name"] in {FEATURE_DEFS[n]["name"].replace("_node_", "_edge_") for n in WEIGHTED_NODE_FIDS}]
+
+
+def threshold_grid_figure(fids, thresholds):
+    """
+    Threshold bars for one threshold pair (left and right bar) of several features of one element type side by side,
+    one column per feature, with ses-1 on top and ses-2 below. Text is larger than on the per-feature pages.
+    """
+    ftype = FEATURE_DEFS[fids[0]]["type"]
+    vertical = ftype == "edge"  # 15 region pairs per panel: narrow bars, so numbers and labels are rotated
+    panel_w, panel_h = (10.0, 6.8) if vertical else (10.0, 5.2)
+    label_min = 12.0 if vertical else 6.0
+    categories = HEMI_CATEGORIES[ftype]
+    fig = plt.figure(figsize=(panel_w * len(fids), panel_h * 2 + 3.5), layout="constrained")
+    ses_figs = fig.subfigures(3, 1, height_ratios=(1, 1, 0.18), hspace=0.03)  # last row: the legend, clear of the axes
+    for ses_fig, ses in zip(ses_figs, SESSIONS):
+        ses_fig.suptitle(ses, fontsize=30, fontweight="bold")
+        for col, (ax, fid) in enumerate(zip(ses_fig.subplots(1, len(fids)), fids)):
+            J = np.load(OUTPUT_TENSORS_DIR / f"J_pair_{fid}_{ses}.npy")
+            n_undefined = int(np.isnan(J).sum())
+            threshold_panel(ax, fid, J, thresholds, fontsize=16, label_min=label_min, vertical=vertical)
+            title = feature_title(fid)
+            if n_undefined:
+                title += f"\n{n_undefined} of {J.size} values 0/0, left out"
+            ax.set_title(title, fontsize=20, fontweight="bold")
+            if col:
+                ax.set_ylabel("")
+    ses_figs[2].legend(handles=[patches.Patch(color=plt.get_cmap("Set2")(i), label=c) for i, c in enumerate(categories)],
+                       loc="center", ncol=len(categories), fontsize=20, title_fontsize=20,
+                       title="Hemispheric category (L left, R right, M midline); segments add up to the bar total written on top")
+    noun = "region" if ftype == "node" else "region pair"
+    fig.suptitle(f"Threshold Bars, Weighted {ftype.capitalize()} Features: Share of Element Similarities "
+                 f"J > {thresholds[0]:.2f} (left bar) and J > {thresholds[1]:.2f} (right bar)\n"
+                 f"Each bar: all {len(SUBJECT_IDS) * (len(SUBJECT_IDS) - 1) // 2} infant pairs x the elements of that {noun} "
+                 f"(n elements in each label); segments of {label_min:.0f}% or less are not labelled",
+                 fontsize=30, fontweight="bold")
+    return fig
+
+
 def generate_threshold_figure():
-    """Threshold bars (as in the legacy notebooks): f01 as the main figure, all 26 features in a multi-page PDF."""
+    """
+    Threshold bars (as in the legacy notebooks): f01 as the main figure, all 26 features in a multi-page PDF, and the
+    weighted node features and their edge versions side by side (one page per threshold pair, also as PNGs).
+    """
     print("[9/9] Generating the Threshold Bars: Share of J Above 0.30, 0.50, 0.75 and 0.90...")
     save_figure(threshold_figure("f01"), "Figure_7_Supplementary_Threshold_Bars")
     with PdfPages(FIGURES_DIR / "Figure_7_Supplementary_Threshold_Bars_All_26.pdf") as pdf:
@@ -750,6 +804,23 @@ def generate_threshold_figure():
             fig = threshold_figure(fid)
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
+    generate_threshold_grid_figure()
+
+
+def generate_threshold_grid_figure():
+    """
+    Weighted node features (pages 1-2) and the same measures on edges (pages 3-4), one column per feature:
+    J > 0.75 and 0.90 on one page, J > 0.50 and 0.30 on the next, each with ses-1 above ses-2.
+    """
+    with PdfPages(FIGURES_DIR / "Figure_7_Supplementary_Threshold_Bars_Weighted_Grid.pdf") as pdf:
+        for kind, fids in (("Nodes", WEIGHTED_NODE_FIDS), ("Edges", WEIGHTED_EDGE_FIDS)):
+            for thresholds in THRESHOLD_PAIRS:
+                fig = threshold_grid_figure(fids, thresholds)
+                pdf.savefig(fig, bbox_inches="tight")
+                tag = "_".join(f"J{round(t * 100):03d}" for t in thresholds)  # e.g. J075_J090
+                fig.savefig(FIGURES_DIR / f"Figure_7_Supplementary_Threshold_Bars_Weighted_{kind}_{tag}.png",
+                            dpi=150, bbox_inches="tight")
+                plt.close(fig)
 
 
 def generate_all_figures():
